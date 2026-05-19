@@ -111,6 +111,7 @@ export default function CustomerProfile({ role, roleConfig, externalTarget, onTa
     return (
       <div
         onClick={onClick}
+        data-testid="customer-card"
         style={{
           padding: "12px 14px", cursor: "pointer",
           background: isSelected ? "linear-gradient(135deg, #1a3a5c 0%, #234b73 100%)" : "transparent",
@@ -662,8 +663,8 @@ export default function CustomerProfile({ role, roleConfig, externalTarget, onTa
         <div style={{ padding: "16px 14px 12px", borderBottom: `1px solid ${C.borderLt}` }}>
           <Tabs activeKey={tab} onChange={(k) => { setTab(k); setSelectedId(null); setProfileData(null); }}
             style={{ marginBottom: 10 }}>
-            <Tabs.Tab title="个人客户" key="personal" />
-            <Tabs.Tab title="企业客户" key="enterprise" />
+            <Tabs.TabPane title="个人客户" key="personal" />
+            <Tabs.TabPane title="企业客户" key="enterprise" />
           </Tabs>
           <Input
             placeholder="搜索客户姓名 / ID"

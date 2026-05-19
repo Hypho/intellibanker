@@ -16,11 +16,21 @@ const STATUS_COLOR = {
 export default function InsightReport({ role, roleConfig, onNavigateToProfile }) {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState(null);
+  const [branches, setBranches] = useState([]);
+  const [managers, setManagers] = useState([]);
   const [dimension, setDimension] = useState(
     roleConfig?.managerId ? "manager" : roleConfig?.branchId ? "branch" : "all"
   );
   const [branchId, setBranchId] = useState(roleConfig?.branchId || "");
   const [managerId, setManagerId] = useState(roleConfig?.managerId || "");
+
+  // Pre-load branch/manager options on mount
+  useEffect(() => {
+    api.getInsightReport({ dimension: "all" }).then((d) => {
+      if (d?.branches) setBranches(d.branches);
+      if (d?.managers) setManagers(d.managers);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if ((dimension === "branch" && !branchId) || (dimension === "manager" && !managerId)) {
@@ -47,14 +57,33 @@ export default function InsightReport({ role, roleConfig, onNavigateToProfile })
     else { setBranchId(""); setManagerId(""); }
   };
 
-  if (loading) return <Spin size={40} style={{ display: "flex", justifyContent: "center", marginTop: 80 }} />;
+  const branchOptions = branches.map((b) => ({ label: b.name, value: b.id }));
+  const managerOptions = managers.map((m) => ({ label: `${m.name}（${m.branch}）`, value: m.id }));
+
+  // ── Dimension selector (always rendered) ──
+  const dimensionSelector = (
+    <Section title="筛选维度" icon={<IconApps />}>
+      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+        <Select value={dimension} onChange={handleDimensionChange}
+          options={[{ label: "全行概览", value: "all" }, { label: "分行视角", value: "branch" }, { label: "客户经理视角", value: "manager" }]}
+          style={{ width: 160 }} />
+        {dimension === "branch" && <Select placeholder="选择分行" value={branchId} onChange={setBranchId} options={branchOptions} style={{ width: 180 }} allowClear />}
+        {dimension === "manager" && <Select placeholder="选择客户经理" value={managerId} onChange={setManagerId} options={managerOptions} style={{ width: 200 }} allowClear />}
+        {data && data.overview && <div style={{ marginLeft: "auto", fontSize: 12, color: C.textDim }}>
+          {data.overview.total_customers} 位个人客户 · {data.overview.total_enterprise_customers || 0} 位企业客户
+        </div>}
+      </div>
+    </Section>
+  );
+
+  if (loading) return <div>{dimensionSelector}<Spin size={40} style={{ display: "flex", justifyContent: "center", marginTop: 80 }} /></div>;
   if (!data) {
-    if ((dimension === "branch" && !branchId) || (dimension === "manager" && !managerId))
-      return <div style={{ textAlign: "center", padding: 80, color: C.textDim }}>请选择{dimension === "branch" ? "分行" : "客户经理"}后查看报告</div>;
-    return null;
+    return <div>{dimensionSelector}<div style={{ textAlign: "center", padding: 80, color: C.textDim }}>
+      {dimension === "branch" ? "请选择分行后查看报告" : dimension === "manager" ? "请选择客户经理后查看报告" : "报告加载失败，请稍后重试"}
+    </div></div>;
   }
 
-  const { overview, customer_structure, business_metrics, key_lists, opportunities, branches, managers, monthly_trends } = data;
+  const { overview, customer_structure, business_metrics, key_lists, opportunities, monthly_trends } = data;
 
   // ── Charts ──
   const trendOption = {
@@ -147,9 +176,6 @@ export default function InsightReport({ role, roleConfig, onNavigateToProfile })
     { title: "流失信号", dataIndex: "signal", render: (v) => <span style={{ fontSize: 12.5, color: C.textMuted }}>{v}</span> },
   ];
 
-  const branchOptions = (branches || []).map((b) => ({ label: b.name, value: b.id }));
-  const managerOptions = (managers || []).map((m) => ({ label: `${m.name}（${m.branch}）`, value: m.id }));
-
   return (
     <div>
       {/* Header */}
@@ -173,18 +199,7 @@ export default function InsightReport({ role, roleConfig, onNavigateToProfile })
       </div>
 
       {/* Dimension selector */}
-      <Section title="筛选维度" icon={<IconApps />}>
-        <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-          <Select value={dimension} onChange={handleDimensionChange}
-            options={[{ label: "全行概览", value: "all" }, { label: "分行视角", value: "branch" }, { label: "客户经理视角", value: "manager" }]}
-            style={{ width: 160 }} />
-          {dimension === "branch" && <Select placeholder="选择分行" value={branchId} onChange={setBranchId} options={branchOptions} style={{ width: 180 }} allowClear />}
-          {dimension === "manager" && <Select placeholder="选择客户经理" value={managerId} onChange={setManagerId} options={managerOptions} style={{ width: 200 }} allowClear />}
-          <div style={{ marginLeft: "auto", fontSize: 12, color: C.textDim }}>
-            {overview.total_customers} 位个人客户 · {overview.total_enterprise_customers || 0} 位企业客户
-          </div>
-        </div>
-      </Section>
+      {dimensionSelector}
 
       {/* KPI Cards */}
       <Row gutter={16} style={{ marginBottom: 20 }}>
@@ -238,27 +253,27 @@ export default function InsightReport({ role, roleConfig, onNavigateToProfile })
       {/* Key lists */}
       <Section title="重点客户名单" icon={<IconStar />}>
         <Tabs>
-          <Tabs.Tab title={"流失预警 (" + (key_lists.churn_risk_customers?.length || 0) + ")"} key="churn">
+          <Tabs.TabPane title={"流失预警 (" + (key_lists.churn_risk_customers?.length || 0) + ")"} key="churn">
             <Table columns={churnColumns} data={key_lists.churn_risk_customers || []} pagination={false} size="small" rowKey="id" noDataElement={<div style={{ padding: 40, color: C.textDim }}>暂无流失预警客户</div>} />
-          </Tabs.Tab>
-          <Tabs.Tab title={"产品到期 (" + (key_lists.product_expiring?.length || 0) + ")"} key="expiring">
+          </Tabs.TabPane>
+          <Tabs.TabPane title={"产品到期 (" + (key_lists.product_expiring?.length || 0) + ")"} key="expiring">
             <Table columns={expiringColumns} data={key_lists.product_expiring || []} pagination={false} size="small" rowKey="id" noDataElement={<div style={{ padding: 40, color: C.textDim }}>暂无到期产品</div>} />
-          </Tabs.Tab>
-          <Tabs.Tab title={"高价值目标 (" + (key_lists.high_value_targets?.length || 0) + ")"} key="highvalue">
+          </Tabs.TabPane>
+          <Tabs.TabPane title={"高价值目标 (" + (key_lists.high_value_targets?.length || 0) + ")"} key="highvalue">
             <Table columns={highValueColumns} data={key_lists.high_value_targets || []} pagination={false} size="small" rowKey="id" noDataElement={<div style={{ padding: 40, color: C.textDim }}>暂无数据</div>} />
-          </Tabs.Tab>
-          <Tabs.Tab title={"交叉销售 (" + (opportunities?.cross_sell_leads?.length || 0) + ")"} key="crosssell">
+          </Tabs.TabPane>
+          <Tabs.TabPane title={"交叉销售 (" + (opportunities?.cross_sell_leads?.length || 0) + ")"} key="crosssell">
             <div style={{ padding: "10px 0", color: C.textMuted, fontSize: 13 }}>
               <span style={{ color: C.info }}>▶</span> 产品覆盖不足但资质良好的客户，建议推荐基金或保险
             </div>
             <Table columns={crossSellColumns} data={opportunities?.cross_sell_leads || []} pagination={false} size="small" rowKey="id" noDataElement={<div style={{ padding: 40, color: C.textDim }}>暂无交叉销售机会</div>} />
-          </Tabs.Tab>
-          <Tabs.Tab title={"流失信号 (" + (opportunities?.churn_alerts?.length || 0) + ")"} key="churnalert">
+          </Tabs.TabPane>
+          <Tabs.TabPane title={"流失信号 (" + (opportunities?.churn_alerts?.length || 0) + ")"} key="churnalert">
             <div style={{ padding: "10px 0", color: C.textMuted, fontSize: 13 }}>
               <span style={{ color: C.danger }}>▶</span> 流失概率较高客户，需优先触达干预
             </div>
             <Table columns={churnAlertColumns} data={opportunities?.churn_alerts || []} pagination={false} size="small" rowKey="id" noDataElement={<div style={{ padding: 40, color: C.textDim }}>暂无流失预警信号</div>} />
-          </Tabs.Tab>
+          </Tabs.TabPane>
         </Tabs>
       </Section>
     </div>

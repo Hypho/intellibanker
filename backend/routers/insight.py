@@ -126,6 +126,30 @@ def _opportunities(personal: list) -> dict:
     return {"cross_sell_leads": cross_sell_leads, "churn_alerts": churn_alerts}
 
 
+def _monthly_trends(personal: list) -> dict:
+    """生成近6个月存贷款趋势数据（基于客户数据聚合+微小波动模拟增长）。"""
+    base_deposits = sum(
+        c["deposits"]["current"] + c["deposits"]["term"] + c["deposits"]["large_certificate"]
+        for c in personal
+    )
+    base_loans = sum(c["loans"]["balance"] for c in personal if c["loans"]["balance"] > 0)
+
+    import random as _rand
+    _rand.seed(42)
+    months = ["2025-12", "2026-01", "2026-02", "2026-03", "2026-04", "2026-05"]
+    deposit_trend = []
+    loan_trend = []
+    dep = base_deposits
+    lon = base_loans
+    for _ in range(6):
+        dep = int(dep * (1 + _rand.uniform(-0.02, 0.04)))
+        lon = int(lon * (1 + _rand.uniform(-0.01, 0.03)))
+        deposit_trend.append(dep)
+        loan_trend.append(lon)
+
+    return {"months": months, "deposit_trend": deposit_trend, "loan_trend": loan_trend}
+
+
 @router.get("/report")
 async def get_insight_report(
     dimension: str = "all",
@@ -155,6 +179,7 @@ async def get_insight_report(
         "business_metrics": _business_metrics(personal),
         "key_lists": _key_lists(personal),
         "opportunities": _opportunities(personal),
+        "monthly_trends": _monthly_trends(personal),
         "branches": [{"id": m["id"], "name": m["branch"]} for m in MANAGERS],
         "managers": [{"id": m["id"], "name": m["name"], "branch": m["branch"]} for m in MANAGERS],
     }

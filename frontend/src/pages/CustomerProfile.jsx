@@ -1,34 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { api } from "../api/client";
 import {
-  Card, Table, Select, Input, Tabs, Tag, Spin, Message, Descriptions, Progress, Grid,
-  Badge, Pagination,
+  Card, Select, Input, Tabs, Tag, Spin, Message, Progress, Grid, Badge, Pagination, Button, Tooltip,
 } from "@arco-design/web-react";
+import { IconSearch, IconLeft, IconRight, IconUser, IconStar, IconSafe, IconClockCircle, IconPhone, IconStorage, IconCalendar, IconApps } from "@arco-design/web-react/icon";
+import ReactECharts from "echarts-for-react";
+import { C, FONT_DISPLAY, FONT_MONO, GRADIENT_HERO, GRADIENT_ACCENT, GRADIENT_SUBTLE, RADIUS, SECTION_STYLE, formatMoney, TAG_COLORS } from "../theme";
+import { Section, MetricCard, DataRow } from "../components/SharedWidgets";
+
 const { Row, Col } = Grid;
 
-const { Search } = Input;
-const ReactECharts = require("echarts-for-react");
-
-
-const TAG_COLORS = {
-  大众客户: "gray",
-  成长型客户: "blue",
-  中端客户: "arcoblue",
-  高净值客户: "gold",
-  新客户: "green",
-  成熟期: "cyan",
-  衰退期: "orange",
-  流失预警: "red",
-  高响应: "green",
-  中响应: "blue",
-  低响应: "orange",
-  未触达: "gray",
-  保守型: "gray",
-  稳健型: "blue",
-  积极型: "orange",
-};
-
-export default function CustomerProfile() {
+export default function CustomerProfile({ role, roleConfig, externalTarget, onTargetConsumed }) {
   const [tab, setTab] = useState("personal");
   const [loading, setLoading] = useState(false);
   const [listData, setListData] = useState({ data: [], total: 0 });
@@ -36,20 +18,38 @@ export default function CustomerProfile() {
   const [profileData, setProfileData] = useState(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [search, setSearch] = useState("");
-  const [filters, setFilters] = useState({});
+  const [filters, setFilters] = useState(() => {
+    if (roleConfig?.managerId) return { manager_id: roleConfig.managerId };
+    return {};
+  });
   const [currentPage, setCurrentPage] = useState(1);
+  const [returnTo, setReturnTo] = useState(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    if (externalTarget?.id) {
+      selectCustomer(externalTarget.id, "personal");
+      setTab("personal");
+      if (onTargetConsumed) onTargetConsumed();
+    }
+  }, [externalTarget]);
 
   useEffect(() => {
     setCurrentPage(1);
-    fetchList();
+    fetchList(1);
   }, [tab, filters, search]);
 
-  const fetchList = async () => {
+  useEffect(() => {
+    if (currentPage > 1) fetchList(currentPage);
+  }, [currentPage]);
+
+  const fetchList = async (page) => {
+    const p = page || currentPage;
     setLoading(true);
     try {
       const res = tab === "personal"
-        ? await api.listPersonalProfiles({ page: currentPage, page_size: 20, search, ...filters })
-        : await api.listEnterpriseProfiles({ page: currentPage, page_size: 20, search });
+        ? await api.listPersonalProfiles({ page: p, page_size: 20, search, ...filters })
+        : await api.listEnterpriseProfiles({ page: p, page_size: 20, search, ...filters });
       setListData(res);
       if (res.data.length > 0 && !selectedId) {
         selectCustomer(res.data[0].id);
@@ -61,11 +61,12 @@ export default function CustomerProfile() {
     }
   };
 
-  const selectCustomer = async (id) => {
+  const selectCustomer = async (id, overrideTab) => {
+    const type = overrideTab || tab;
     setSelectedId(id);
     setProfileLoading(true);
     try {
-      const res = await api.getProfile(tab, id);
+      const res = await api.getProfile(type, id);
       setProfileData(res);
     } catch (e) {
       Message.error("加载画像失败");
@@ -75,344 +76,338 @@ export default function CustomerProfile() {
     }
   };
 
-  const formatMoney = (v) =>
-    v >= 100000000 ? (v / 100000000).toFixed(1) + "亿"
-    : v >= 10000 ? (v / 10000).toFixed(0) + "万"
-    : v ? v.toLocaleString() : "0";
-
-  // ── 个人客户列 ──
-  const personalColumns = [
-    {
-      title: "客户ID",
-      dataIndex: "id",
-      width: 90,
-      render: (v) => <span style={{ fontFamily: "monospace", fontSize: 12 }}>{v}</span>,
-    },
-    { title: "姓名", dataIndex: "name" },
-    {
-      title: "资产等级",
-      dataIndex: "asset_level",
-      render: (v) => <Tag color={TAG_COLORS[v] || "gray"}>{v}</Tag>,
-    },
-    {
-      title: "生命周期",
-      dataIndex: "lifecycle",
-      render: (v) => <Tag color={TAG_COLORS[v] || "gray"}>{v}</Tag>,
-    },
-    {
-      title: "AUM",
-      dataIndex: "aum",
-      render: (v) => formatMoney(v),
-    },
-    {
-      title: "流失概率",
-      dataIndex: "churn_probability",
-      render: (v) => (
-        <Progress
-          percent={Math.round(v * 100)}
-          size="small"
-          showText
-          status={v > 0.5 ? "error" : "normal"}
-          style={{ width: 80 }}
-        />
-      ),
-    },
-  ];
-
-  // ── 企业客户列 ──
-  const enterpriseColumns = [
-    {
-      title: "企业ID",
-      dataIndex: "id",
-      width: 90,
-      render: (v) => <span style={{ fontFamily: "monospace", fontSize: 12 }}>{v}</span>,
-    },
-    { title: "企业名称", dataIndex: "name" },
-    { title: "行业", dataIndex: "industry" },
-    {
-      title: "授信使用",
-      render: (_, r) => {
-        const pct = r.credit_limit > 0 ? Math.round((r.credit_used / r.credit_limit) * 100) : 0;
-        return (
-          <div style={{ width: 90 }}>
-            <Progress percent={pct} size="small" showText formatText={(v) => v + "%"} status={pct > 70 ? "error" : "normal"} />
-          </div>
-        );
-      },
-    },
-    {
-      title: "存款余额",
-      dataIndex: "deposit_balance",
-      render: (v) => formatMoney(v),
-    },
-    {
-      title: "舆情",
-      dataIndex: "sentiment",
-      render: (v) => <Tag color={{ 正面: "green", 中性: "gray", 负面: "red" }[v] || "gray"}>{v}</Tag>,
-    },
-  ];
-
-  // ── 金融行为 ECharts 配置 ──
+  // ── ECharts configs ──
   const buildFlowTrendOption = (data) => ({
     tooltip: { trigger: "axis", formatter: (p) => `${p[0].name}<br/><b>${(p[0].value / 10000).toFixed(1)}万</b>` },
-    grid: { top: 24, right: 16, bottom: 24, left: 56 },
-    xAxis: { type: "category", data: ["1月","2月","3月","4月","5月","6月"], axisLine: { lineStyle: { color: "#e5e7eb" } }, axisLabel: { fontSize: 11, color: "#6b7280" } },
-    yAxis: { type: "value", axisLabel: { formatter: (v) => (v / 10000).toFixed(0) + "万", fontSize: 10, color: "#6b7280" }, splitLine: { lineStyle: { color: "#f3f4f6" } } },
+    grid: { top: 20, right: 12, bottom: 20, left: 48 },
+    xAxis: { type: "category", data: ["1月","2月","3月","4月","5月","6月"], axisLine: { lineStyle: { color: "#e5e7eb" } }, axisLabel: { fontSize: 11, color: "#94a3b8" } },
+    yAxis: { type: "value", axisLabel: { formatter: (v) => (v / 10000).toFixed(0) + "万", fontSize: 10, color: "#94a3b8" }, splitLine: { lineStyle: { color: "#f3f4f6" } } },
     series: [{
-      type: "line",
-      data: (data || []).map((v) => v),
-      smooth: true,
-      areaStyle: { color: "rgba(26,58,92,0.12)" },
-      lineStyle: { color: "#1a3a5c", width: 2 },
-      itemStyle: { color: "#1a3a5c" },
-      symbol: "circle",
-      symbolSize: 5,
+      type: "line", data: (data || []), smooth: true,
+      areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: "rgba(26,58,92,0.18)" }, { offset: 1, color: "rgba(26,58,92,0)" }] } },
+      lineStyle: { color: "#1a3a5c", width: 2.5 }, itemStyle: { color: "#1a3a5c" }, symbol: "circle", symbolSize: 6,
     }],
   });
 
   const buildActivityOption = (scores) => ({
     tooltip: {},
     radar: {
-      indicator: [
-        { name: "1月", max: 100 },
-        { name: "2月", max: 100 },
-        { name: "3月", max: 100 },
-        { name: "4月", max: 100 },
-        { name: "5月", max: 100 },
-        { name: "6月", max: 100 },
-      ],
-      radius: "60%",
-      name: { textStyle: { fontSize: 10, color: "#6b7280" } },
-      splitLine: { lineStyle: { color: "#e5e7eb" } },
-      splitArea: { areaStyle: { color: ["#fff", "#fafafa"] } },
+      indicator: [{ name: "1月", max: 100 }, { name: "2月", max: 100 }, { name: "3月", max: 100 }, { name: "4月", max: 100 }, { name: "5月", max: 100 }, { name: "6月", max: 100 }],
+      radius: "60%", name: { textStyle: { fontSize: 10, color: "#94a3b8" } },
+      splitLine: { lineStyle: { color: "#e5e7eb" } }, splitArea: { areaStyle: { color: ["#fff", "#fafbfc"] } },
+      axisLine: { lineStyle: { color: "#e5e7eb" } },
     },
     series: [{
       type: "radar",
-      data: [{
-        value: scores || [0,0,0,0,0,0],
-        name: "活跃度",
-        areaStyle: { color: "rgba(22,93,255,0.2)" },
-        lineStyle: { color: "#165dff", width: 2 },
-        itemStyle: { color: "#165dff" },
+      data: [{ value: scores || [0,0,0,0,0,0], name: "活跃度",
+        areaStyle: { color: "rgba(22,93,255,0.15)" }, lineStyle: { color: "#165dff", width: 2 }, itemStyle: { color: "#165dff" },
       }],
     }],
   });
 
-  const buildChannelOption = (pref) => {
-    const channelMap = { 手机银行: 45, 网上银行: 22, 网点: 18, 混合: 15 };
-    const val = channelMap[pref] || 30;
-    return {
-      tooltip: { formatter: "{b}: {c}%", trigger: "item" },
-      series: [{
-        type: "pie",
-        radius: ["45%", "68%"],
-        center: ["50%", "50%"],
-        label: { show: true, formatter: "{b}\n{c}%", fontSize: 11 },
-        data: [
-          { value: val, name: pref || "未知" },
-          { value: 100 - val, name: "其他渠道" },
-        ],
-        color: ["#1a3a5c", "#e5e7eb"],
-      }],
-    };
+  // ── Sidebar customer card ──
+  const CustomerCard = ({ item, isSelected, onClick }) => {
+    const isPersonal = tab === "personal";
+    return (
+      <div
+        onClick={onClick}
+        style={{
+          padding: "12px 14px", cursor: "pointer",
+          background: isSelected ? "linear-gradient(135deg, #1a3a5c 0%, #234b73 100%)" : "transparent",
+          borderRadius: 10, transition: "all 0.2s ease",
+          border: isSelected ? "1px solid rgba(201,168,76,0.3)" : "1px solid transparent",
+          marginBottom: 4,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: 10,
+            background: isSelected ? "rgba(255,255,255,0.15)" : "linear-gradient(135deg, #e8ecf1 0%, #dde3ea 100%)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 14, fontWeight: 700,
+            color: isSelected ? "#c9a84c" : "#1a3a5c",
+            flexShrink: 0,
+          }}>
+            {(item.name || "").charAt(0)}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
+              <span style={{
+                fontSize: 13, fontWeight: 600,
+                color: isSelected ? "#ffffff" : "#1a212a",
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>
+                {item.name}
+              </span>
+              {isPersonal && (
+                <span style={{
+                  fontSize: 11, fontWeight: 600, color: isSelected ? "#c9a84c" : "#1a3a5c",
+                  fontFamily: FONT_DISPLAY,
+                }}>
+                  {item.aum >= 10000 ? (item.aum / 10000).toFixed(0) + "万" : item.aum?.toLocaleString()}
+                </span>
+              )}
+              {!isPersonal && (
+                <span style={{ fontSize: 11, color: isSelected ? "rgba(255,255,255,0.6)" : "#94a3b8" }}>
+                  {item.industry}
+                </span>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <span style={{ fontFamily: "monospace", fontSize: 10.5, color: isSelected ? "rgba(255,255,255,0.45)" : "#b0b8c4" }}>{item.id}</span>
+              {isPersonal && item.asset_level && (
+                <span style={{
+                  fontSize: 10, padding: "1px 6px", borderRadius: 4,
+                  background: isSelected ? "rgba(201,168,76,0.2)" : (TAG_COLORS[item.asset_level] || "#94a3b8") + "18",
+                  color: isSelected ? "#c9a84c" : (TAG_COLORS[item.asset_level] || "#94a3b8"),
+                  fontWeight: 600,
+                }}>
+                  {item.asset_level}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
-  // ── 个人画像详情 ──
+  // ── Personal Profile ──
   const renderPersonalProfile = (p) => {
     const flowData = p.financial_behavior?.monthly_flow_trend || [];
     const activityData = p.financial_behavior?.activity_scores_6m || [];
     const channelPref = p.financial_behavior?.channel_preference || "未知";
     const loginDays = p.financial_behavior?.app_login_days_30 || 0;
     const transferFreq = p.financial_behavior?.transfer_frequency || "未知";
+    const totalDeposit = (p.deposits?.current || 0) + (p.deposits?.term || 0) + (p.deposits?.large_certificate || 0);
 
     return (
       <div>
-        {/* 基本信息 */}
-        <Card title="基本信息" style={{ marginBottom: 16 }}>
-          <Descriptions column={3} size="small" bordered>
-            <Descriptions.Item label="姓名">{p.basic_info?.name}</Descriptions.Item>
-            <Descriptions.Item label="手机">{p.basic_info?.phone}</Descriptions.Item>
-            <Descriptions.Item label="职业">{p.basic_info?.occupation}</Descriptions.Item>
-            <Descriptions.Item label="所属机构">{p.basic_info?.branch}</Descriptions.Item>
-            <Descriptions.Item label="主办客户经理">{p.basic_info?.manager_name}</Descriptions.Item>
-            <Descriptions.Item label="开户时间">{p.basic_info?.account_open_date}</Descriptions.Item>
-            <Descriptions.Item label="AUM"><strong style={{ color: "#1a3a5c", fontSize: 16 }}>{formatMoney(p.aum)}</strong></Descriptions.Item>
-            <Descriptions.Item label="资产等级"><Tag color={TAG_COLORS[p.asset_level]}>{p.asset_level}</Tag></Descriptions.Item>
-            <Descriptions.Item label="生命周期"><Tag color={TAG_COLORS[p.lifecycle]}>{p.lifecycle}</Tag></Descriptions.Item>
-          </Descriptions>
-        </Card>
-
-        {/* 持有产品 + 存款明细 */}
-        <Row gutter={16} style={{ marginBottom: 16 }}>
-          {/* 持有产品 */}
-          <Col span={12}>
-            <Card title="持有产品">
-              {p.products?.length > 0 ? (
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ background: "#f9fafb" }}>
-                      <th style={{ textAlign: "left", padding: "6px 8px", borderBottom: "1px solid #e5e7eb" }}>产品类型</th>
-                      <th style={{ textAlign: "right", padding: "6px 8px", borderBottom: "1px solid #e5e7eb" }}>余额</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {p.products.map((pr, i) => (
-                      <tr key={i} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                        <td style={{ padding: "6px 8px" }}>{pr.type}</td>
-                        <td style={{ textAlign: "right", padding: "6px 8px", color: "#1a3a5c" }}>{formatMoney(pr.balance)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : <div style={{ color: "#9ca3af" }}>暂无持有产品</div>}
-              {p.product_expiring && (
-                <div style={{ marginTop: 12, padding: "8px 12px", background: "#fff7ed", borderRadius: 6, border: "1px solid #fed7aa" }}>
-                  <div style={{ fontSize: 12, color: "#c2410c", fontWeight: 600 }}>⚠️ 产品到期提醒</div>
-                  <div style={{ fontSize: 13, color: "#7c2d12", marginTop: 4 }}>
-                    {p.product_expiring.product_type} · {formatMoney(p.product_expiring.balance)} · {p.product_expiring.days_left}天后到期
-                  </div>
+        {/* Hero header */}
+        <div style={{
+          background: GRADIENT_HERO,
+          borderRadius: 14, padding: "28px 28px 24px", marginBottom: 20,
+          position: "relative", overflow: "hidden",
+        }}>
+          <div style={{ position: "absolute", top: -40, right: -20, width: 180, height: 180, borderRadius: "50%", background: "rgba(201,168,76,0.06)" }} />
+          <div style={{ position: "absolute", bottom: -60, right: 60, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.03)" }} />
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", position: "relative" }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+                <div style={{
+                  width: 52, height: 52, borderRadius: RADIUS.xl,
+                  background: GRADIENT_ACCENT,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 22, fontWeight: 700, color: "#fff", fontFamily: FONT_DISPLAY,
+                  boxShadow: "0 4px 12px rgba(201,168,76,0.3)",
+                }}>
+                  {(p.basic_info?.name || "").charAt(0)}
                 </div>
-              )}
-            </Card>
-          </Col>
-
-          {/* 存款明细 */}
-          <Col span={12}>
-            <Card title="存款明细">
-              {p.deposits ? (
                 <div>
-                  <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
-                    {[
-                      { label: "活期存款", value: p.deposits.current, color: "#165dff" },
-                      { label: "定期存款", value: p.deposits.term, color: "#1a3a5c" },
-                      { label: "大额存单", value: p.deposits.large_certificate, color: "#c9a84c" },
-                    ].map((item) => (
-                      <div key={item.label} style={{ flex: 1, padding: "10px 12px", background: "#f9fafb", borderRadius: 8, textAlign: "center", border: "1px solid #e5e7eb" }}>
-                        <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>{item.label}</div>
-                        <div style={{ fontSize: 15, fontWeight: 700, color: item.color }}>{formatMoney(item.value)}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{ fontSize: 13, color: "#374151", padding: "6px 0", borderTop: "1px solid #f3f4f6" }}>
-                    存款合计：<strong style={{ color: "#1a3a5c" }}>{formatMoney((p.deposits.current || 0) + (p.deposits.term || 0) + (p.deposits.large_certificate || 0))}</strong>
-                  </div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: "#ffffff", letterSpacing: "0.03em" }}>{p.basic_info?.name}</div>
+                  <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", marginTop: 2 }}>{p.id} · {p.basic_info?.occupation}</div>
                 </div>
-              ) : <div style={{ color: "#9ca3af" }}>暂无存款信息</div>}
-            </Card>
-          </Col>
-        </Row>
-
-        {/* 贷款 */}
-        {p.loans && p.loans.balance > 0 && (
-          <Card title="贷款信息" style={{ marginBottom: 16 }}>
-            <div style={{ display: "flex", gap: 24 }}>
-              <div style={{ textAlign: "center", padding: "12px 20px", background: "#fef2f2", borderRadius: 8, flex: 1 }}>
-                <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 6 }}>贷款余额</div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: "#f53f3f" }}>{formatMoney(p.loans.balance)}</div>
               </div>
-              <div style={{ textAlign: "center", padding: "12px 20px", background: "#f0f9ff", borderRadius: 8, flex: 1 }}>
-                <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 6 }}>贷款类型</div>
-                <div style={{ fontSize: 16, fontWeight: 600, color: "#165dff" }}>{p.loans.type || "—"}</div>
-              </div>
-              <div style={{ textAlign: "center", padding: "12px 20px", background: "#f0fdf4", borderRadius: 8, flex: 1 }}>
-                <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 6 }}>还款状态</div>
-                <div style={{ fontSize: 16, fontWeight: 600, color: "#00b42a" }}>{p.loans.status || "正常"}</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {[p.asset_level, p.lifecycle, p.tags?.risk_preference, p.tags?.marketing_response].filter(Boolean).map((t, i) => (
+                  <span key={i} style={{
+                    fontSize: 11, padding: "3px 10px", borderRadius: 6,
+                    background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.8)",
+                    fontWeight: 500, backdropFilter: "blur(4px)",
+                  }}>
+                    {t}
+                  </span>
+                ))}
               </div>
             </div>
-          </Card>
-        )}
-
-        {/* 金融行为 */}
-        <Card title="金融行为分析" style={{ marginBottom: 16 }}>
-          <Row gutter={16}>
-            <Col span={10}>
-              <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 8, fontWeight: 600 }}>近6月净流入趋势（万元）</div>
-              <ReactECharts option={buildFlowTrendOption(flowData)} style={{ height: 160 }} />
-            </Col>
-            <Col span={8}>
-              <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 8, fontWeight: 600 }}>活跃度雷达（6个月）</div>
-              <ReactECharts option={buildActivityOption(activityData)} style={{ height: 160 }} />
-            </Col>
-            <Col span={6}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <div style={{ padding: "10px 12px", background: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb" }}>
-                  <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>转账频率</div>
-                  <Tag color={{ 低: "gray", 中: "blue", 高: "green" }[transferFreq] || "gray"}>{transferFreq}</Tag>
-                </div>
-                <div style={{ padding: "10px 12px", background: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb" }}>
-                  <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>渠道偏好</div>
-                  <Tag color="arcoblue">{channelPref}</Tag>
-                </div>
-                <div style={{ padding: "10px 12px", background: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb" }}>
-                  <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>近30天App登录</div>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: loginDays > 15 ? "#00b42a" : loginDays > 5 ? "#165dff" : "#f53f3f" }}>{loginDays} <span style={{ fontSize: 12, fontWeight: 400, color: "#6b7280" }}>天</span></div>
-                </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 4, fontWeight: 500 }}>AUM 总资产</div>
+              <div style={{ fontSize: 30, fontWeight: 700, color: "#c9a84c", fontFamily: FONT_DISPLAY, lineHeight: 1.1 }}>
+                {formatMoney(p.aum)}
               </div>
-            </Col>
-          </Row>
-        </Card>
+            </div>
+          </div>
+        </div>
 
-        {/* 标签与风险 */}
-        <Row gutter={16} style={{ marginBottom: 16 }}>
-          <Col span={12}>
-            <Card title="客户标签">
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
-                <Tag color={TAG_COLORS[p.asset_level]}>{p.asset_level}</Tag>
-                <Tag color={TAG_COLORS[p.lifecycle]}>{p.lifecycle}</Tag>
-                <Tag color={TAG_COLORS[p.tags?.risk_preference]}>{p.tags?.risk_preference}</Tag>
-                <Tag color={TAG_COLORS[p.tags?.marketing_response]}>{p.tags?.marketing_response}</Tag>
-              </div>
-              <div style={{ fontSize: 13, color: "#374151" }}>
-                <div style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
-                  流失概率：
-                  <Progress percent={Math.round(p.tags?.churn_probability * 100)} size="small" showText status={p.tags?.churn_probability > 0.5 ? "error" : "normal"} style={{ display: "inline-flex", width: 120 }} />
-                </div>
-                <div>风险偏好：<Tag size="small" color={TAG_COLORS[p.tags?.risk_preference]}>{p.tags?.risk_preference}</Tag></div>
-                <div style={{ marginTop: 4 }}>营销响应：<Tag size="small" color={TAG_COLORS[p.tags?.marketing_response]}>{p.tags?.marketing_response}</Tag></div>
-              </div>
-            </Card>
-          </Col>
-          <Col span={12}>
-            <Card title="风险信息">
-              <Descriptions column={1} size="small">
-                <Descriptions.Item label="信用评级">{p.risk_info?.credit_rating || "未知"}</Descriptions.Item>
-                <Descriptions.Item label="逾期记录">{p.risk_info?.overdue_records || "无"}</Descriptions.Item>
-              </Descriptions>
-            </Card>
-          </Col>
-        </Row>
+        {/* Quick metrics */}
+        <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
+          <MetricCard label="存款合计" value={formatMoney(totalDeposit)} color="#1a3a5c" />
+          <MetricCard label="贷款余额" value={p.loans?.balance > 0 ? formatMoney(p.loans.balance) : "—"} color={p.loans?.balance > 0 ? "#ef4444" : "#94a3b8"} />
+          <MetricCard label="持有产品" value={p.products?.length || 0} unit="个" color="#3b82f6" />
+          <MetricCard label="流失概率" value={Math.round((p.tags?.churn_probability || 0) * 100)} unit="%" color={p.tags?.churn_probability > 0.5 ? "#ef4444" : "#22c55e"} />
+          <MetricCard label="App登录" value={loginDays} unit="天/月" color={loginDays > 15 ? "#22c55e" : loginDays > 5 ? "#3b82f6" : "#ef4444"} />
+        </div>
 
-        {/* 事件 & 触达历史 */}
-        <Row gutter={16}>
+        {/* Products & Deposits */}
+        <Row gutter={20}>
           <Col span={12}>
-            <Card title="触发事件">
-              <EventTabs events={p.events || []} />
-            </Card>
-          </Col>
-          <Col span={12}>
-            <Card title="最近触达">
-              {p.contact_history?.length > 0 ? (
+            <Section title="持有产品" icon={<IconApps />}>
+              {p.products?.length > 0 ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {[...p.contact_history].reverse().map((c, i) => (
-                    <div key={i} style={{ fontSize: 13, padding: "8px 12px", background: "#f9fafb", borderRadius: 6 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", color: "#6b7280" }}>
-                        <span>{c.date}</span>
-                        <Tag size="small">{c.channel}</Tag>
-                      </div>
-                      <div style={{ marginTop: 4, color: "#374151" }}>{c.content}</div>
-                      <div style={{ marginTop: 2, fontSize: 12, color: c.response === "有意向" ? "#00b42a" : "#6b7280" }}>响应：{c.response}</div>
+                  {p.products.map((pr, i) => (
+                    <div key={i} style={{
+                      display: "flex", justifyContent: "space-between", alignItems: "center",
+                      padding: "10px 14px", background: "#f8f9fb", borderRadius: 8,
+                    }}>
+                      <span style={{ fontSize: 13, color: "#4a5568", fontWeight: 500 }}>{pr.type}</span>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: "#1a3a5c", fontFamily: FONT_DISPLAY }}>{formatMoney(pr.balance)}</span>
                     </div>
                   ))}
                 </div>
-              ) : <div style={{ color: "#9ca3af" }}>暂无触达记录</div>}
-            </Card>
+              ) : <div style={{ color: "#b0b8c4", fontSize: 13, textAlign: "center", padding: 20 }}>暂无持有产品</div>}
+              {p.product_expiring && (
+                <div style={{
+                  marginTop: 12, padding: "10px 14px",
+                  background: "linear-gradient(135deg, #fff7ed 0%, #fef3c7 100%)",
+                  borderRadius: 8, border: "1px solid #fed7aa",
+                }}>
+                  <div style={{ fontSize: 12, color: "#c2410c", fontWeight: 600, marginBottom: 2 }}>产品到期提醒</div>
+                  <div style={{ fontSize: 13, color: "#7c2d12" }}>
+                    {p.product_expiring.product_type} · {formatMoney(p.product_expiring.balance)} · <strong>{p.product_expiring.days_left}天</strong>后到期
+                  </div>
+                </div>
+              )}
+            </Section>
+          </Col>
+          <Col span={12}>
+            <Section title="存款结构" icon={<IconStorage />}>
+              {p.deposits ? (
+                <div>
+                  <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+                    {[
+                      { label: "活期", value: p.deposits.current, color: "#3b82f6" },
+                      { label: "定期", value: p.deposits.term, color: "#1a3a5c" },
+                      { label: "大额存单", value: p.deposits.large_certificate, color: "#c9a84c" },
+                    ].map((item) => (
+                      <div key={item.label} style={{
+                        flex: 1, padding: "12px 10px", background: "#f8f9fb", borderRadius: 8,
+                        textAlign: "center", border: "1px solid #eef0f3",
+                      }}>
+                        <div style={{ fontSize: 11, color: "#8896a6", marginBottom: 6 }}>{item.label}</div>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: item.color, fontFamily: FONT_DISPLAY }}>{formatMoney(item.value)}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{
+                    display: "flex", justifyContent: "space-between", alignItems: "center",
+                    padding: "10px 14px", background: "linear-gradient(135deg, #f0f4ff 0%, #f8f9fb 100%)",
+                    borderRadius: 8, border: "1px solid #e0e7ff",
+                  }}>
+                    <span style={{ fontSize: 13, color: "#6b7280" }}>存款合计</span>
+                    <span style={{ fontSize: 18, fontWeight: 700, color: "#1a3a5c", fontFamily: FONT_DISPLAY }}>{formatMoney(totalDeposit)}</span>
+                  </div>
+                </div>
+              ) : <div style={{ color: "#b0b8c4", fontSize: 13, textAlign: "center", padding: 20 }}>暂无存款</div>}
+            </Section>
+          </Col>
+        </Row>
+
+        {/* Loans */}
+        {p.loans?.balance > 0 && (
+          <Section title="贷款信息" icon={<IconSafe />}>
+            <div style={{ display: "flex", gap: 14 }}>
+              <MetricCard label="贷款余额" value={formatMoney(p.loans.balance)} color="#ef4444" bg="#fef2f2" />
+              <MetricCard label="贷款类型" value={p.loans.type || "—"} color="#3b82f6" bg="#eff6ff" />
+              <MetricCard label="还款状态" value={p.loans.status || "正常"} color="#22c55e" bg="#f0fdf4" />
+            </div>
+          </Section>
+        )}
+
+        {/* Financial Behavior */}
+        <Section title="金融行为分析" icon={<IconStar />}>
+          <Row gutter={20}>
+            <Col span={10}>
+              <div style={{ fontSize: 11, color: "#8896a6", marginBottom: 8, fontWeight: 600 }}>近6月净流入趋势</div>
+              <ReactECharts option={buildFlowTrendOption(flowData)} style={{ height: 180 }} />
+            </Col>
+            <Col span={8}>
+              <div style={{ fontSize: 11, color: "#8896a6", marginBottom: 8, fontWeight: 600 }}>活跃度雷达</div>
+              <ReactECharts option={buildActivityOption(activityData)} style={{ height: 180 }} />
+            </Col>
+            <Col span={6}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <DataRow label="转账频率" value={<Tag size="small" color={{ 低: "gray", 中: "blue", 高: "green" }[transferFreq]}>{transferFreq}</Tag>} />
+                <DataRow label="渠道偏好" value={<Tag size="small" color="arcoblue">{channelPref}</Tag>} />
+                <DataRow label="App登录" value={<span style={{ fontWeight: 700, color: loginDays > 15 ? "#22c55e" : loginDays > 5 ? "#3b82f6" : "#ef4444" }}>{loginDays}天</span>} />
+              </div>
+            </Col>
+          </Row>
+        </Section>
+
+        {/* Tags & Risk */}
+        <Row gutter={20}>
+          <Col span={12}>
+            <Section title="客户标签" icon={<IconUser />}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+                {[
+                  { label: p.asset_level, color: TAG_COLORS[p.asset_level] },
+                  { label: p.lifecycle, color: TAG_COLORS[p.lifecycle] },
+                  { label: p.tags?.risk_preference, color: TAG_COLORS[p.tags?.risk_preference] },
+                  { label: p.tags?.marketing_response, color: TAG_COLORS[p.tags?.marketing_response] },
+                ].filter(t => t.label).map((t, i) => (
+                  <span key={i} style={{
+                    fontSize: 12, padding: "4px 12px", borderRadius: 6,
+                    background: (t.color || "#94a3b8") + "15", color: t.color || "#94a3b8",
+                    fontWeight: 600, border: `1px solid ${(t.color || "#94a3b8")}30`,
+                  }}>
+                    {t.label}
+                  </span>
+                ))}
+              </div>
+              <DataRow label="流失概率" value={
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Progress percent={Math.round((p.tags?.churn_probability || 0) * 100)} size="small" status={p.tags?.churn_probability > 0.5 ? "error" : "normal"} style={{ width: 100 }} />
+                  <span style={{ fontSize: 12, color: p.tags?.churn_probability > 0.5 ? "#ef4444" : "#22c55e", fontWeight: 600 }}>
+                    {Math.round((p.tags?.churn_probability || 0) * 100)}%
+                  </span>
+                </div>
+              } />
+              <DataRow label="风险偏好" value={p.tags?.risk_preference} />
+              <DataRow label="营销响应" value={p.tags?.marketing_response} />
+            </Section>
+          </Col>
+          <Col span={12}>
+            <Section title="风险信息" icon={<IconSafe />}>
+              <DataRow label="信用评级" value={p.risk_info?.credit_rating || "未知"} />
+              <DataRow label="逾期记录" value={p.risk_info?.overdue_records || "无"} />
+            </Section>
+          </Col>
+        </Row>
+
+        {/* Events & Contact */}
+        <Row gutter={20}>
+          <Col span={12}>
+            <Section title="触发事件" icon={<IconClockCircle />}>
+              <EventTabs events={p.events || []} />
+            </Section>
+          </Col>
+          <Col span={12}>
+            <Section title="触达历史" icon={<IconPhone />}>
+              {p.contact_history?.length > 0 ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {[...p.contact_history].reverse().slice(0, 5).map((c, i) => (
+                    <div key={i} style={{
+                      padding: "10px 14px", background: "#f8f9fb", borderRadius: 8,
+                      borderLeft: `3px solid ${c.response === "有意向" ? "#22c55e" : "#e5e7eb"}`,
+                    }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                        <span style={{ fontSize: 12, color: "#8896a6" }}>{c.date}</span>
+                        <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, background: "#eef0f3", color: "#6b7280" }}>{c.channel}</span>
+                      </div>
+                      <div style={{ fontSize: 13, color: "#2d3748", fontWeight: 500 }}>{c.content}</div>
+                      <div style={{ fontSize: 12, color: c.response === "有意向" ? "#22c55e" : "#94a3b8", marginTop: 2 }}>{c.response}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : <div style={{ color: "#b0b8c4", fontSize: 13, textAlign: "center", padding: 20 }}>暂无触达记录</div>}
+            </Section>
           </Col>
         </Row>
       </div>
     );
   };
 
-  // ── 事件 Tab 组件 ──
+  // ── Event Tabs ──
   const EventTabs = ({ events }) => {
     const [eventTab, setEventTab] = useState("all");
     const high = (events || []).filter((e) => e.priority === "high");
@@ -420,18 +415,16 @@ export default function CustomerProfile() {
     const all = events || [];
 
     const renderList = (list) => {
-      if (!list || list.length === 0) return <div style={{ color: "#9ca3af", fontSize: 13 }}>暂无</div>;
+      if (!list || list.length === 0) return <div style={{ color: "#b0b8c4", fontSize: 13, textAlign: "center", padding: 16 }}>暂无</div>;
       return list.map((e, i) => (
         <div key={i} style={{
-          padding: "8px 12px",
-          background: e.priority === "high" ? "#fef2f2" : "#f0f9ff",
-          borderRadius: 6,
-          borderLeft: `3px solid ${e.priority === "high" ? "#f53f3f" : "#165dff"}`,
-          marginBottom: 8,
+          padding: "10px 14px", borderRadius: 8, marginBottom: 8,
+          background: e.priority === "high" ? "#fef2f2" : "#eff6ff",
+          borderLeft: `3px solid ${e.priority === "high" ? "#ef4444" : "#3b82f6"}`,
         }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: "#1a212a" }}>{e.description}</div>
-          <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>{e.action}</div>
-          {e.type && <Tag size="small" style={{ marginTop: 4 }}>{e.type}</Tag>}
+          <div style={{ fontSize: 12, color: "#6b7280", marginTop: 3 }}>{e.action}</div>
+          {e.type && <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, background: "#eef0f3", color: "#6b7280", marginTop: 6, display: "inline-block" }}>{e.type}</span>}
         </div>
       ));
     };
@@ -441,21 +434,15 @@ export default function CustomerProfile() {
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
           {[
             { key: "all", label: `全部 (${all.length})`, color: "#1a3a5c" },
-            { key: "high", label: `高优 (${high.length})`, color: "#f53f3f" },
-            { key: "medium", label: `中优 (${medium.length})`, color: "#165dff" },
+            { key: "high", label: `高优 (${high.length})`, color: "#ef4444" },
+            { key: "medium", label: `中优 (${medium.length})`, color: "#3b82f6" },
           ].map((t) => (
-            <div
-              key={t.key}
-              onClick={() => setEventTab(t.key)}
-              style={{
-                padding: "4px 10px",
-                borderRadius: 20,
-                fontSize: 12,
-                cursor: "pointer",
-                background: eventTab === t.key ? t.color : "#f3f4f6",
-                color: eventTab === t.key ? "#fff" : "#6b7280",
-              }}
-            >
+            <div key={t.key} onClick={() => setEventTab(t.key)} style={{
+              padding: "5px 14px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontWeight: 500,
+              background: eventTab === t.key ? t.color : "#f3f4f6",
+              color: eventTab === t.key ? "#fff" : "#6b7280",
+              transition: "all 0.15s",
+            }}>
               {t.label}
             </div>
           ))}
@@ -467,225 +454,310 @@ export default function CustomerProfile() {
     );
   };
 
-  // ── 企业画像 ──
+  // ── Enterprise Profile ──
   const renderEnterpriseProfile = (p) => (
     <div>
-      <Card title="企业基本信息" style={{ marginBottom: 16 }}>
-        <Descriptions column={3} size="small" bordered>
-          <Descriptions.Item label="企业名称">{p.basic_info?.name}</Descriptions.Item>
-          <Descriptions.Item label="所属行业">{p.basic_info?.industry}</Descriptions.Item>
-          <Descriptions.Item label="注册资本">{formatMoney(p.basic_info?.registered_capital)}</Descriptions.Item>
-          <Descriptions.Item label="实际控制人">{p.basic_info?.actual_controller}</Descriptions.Item>
-          <Descriptions.Item label="员工规模">{p.basic_info?.employee_count}人</Descriptions.Item>
-          <Descriptions.Item label="成立日期">{p.basic_info?.established_date}</Descriptions.Item>
-          {p.basic_info?.group && <Descriptions.Item label="关联集团">{p.basic_info.group}</Descriptions.Item>}
-        </Descriptions>
-      </Card>
+      {/* Hero header */}
+      <div style={{
+        background: "linear-gradient(135deg, #1a3a5c 0%, #0d2137 100%)",
+        borderRadius: 14, padding: "28px 28px 24px", marginBottom: 20,
+        position: "relative", overflow: "hidden",
+      }}>
+        <div style={{ position: "absolute", top: -40, right: -20, width: 180, height: 180, borderRadius: "50%", background: "rgba(201,168,76,0.06)" }} />
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", position: "relative" }}>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+              <div style={{
+                width: 52, height: 52, borderRadius: 14,
+                background: "linear-gradient(135deg, #c9a84c 0%, #b8962e 100%)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 18, fontWeight: 700, color: "#fff", fontFamily: FONT_DISPLAY,
+                boxShadow: "0 4px 12px rgba(201,168,76,0.3)",
+              }}>
+                {(p.basic_info?.name || "").charAt(0)}
+              </div>
+              <div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: "#ffffff", letterSpacing: "0.02em" }}>{p.basic_info?.name}</div>
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", marginTop: 2 }}>{p.id} · {p.basic_info?.industry}</div>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {[p.basic_info?.industry, p.risk?.sentiment, p.risk?.credit_report].filter(Boolean).map((t, i) => (
+                <span key={i} style={{
+                  fontSize: 11, padding: "3px 10px", borderRadius: 6,
+                  background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.8)",
+                  fontWeight: 500,
+                }}>{t}</span>
+              ))}
+            </div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 4 }}>注册资本</div>
+            <div style={{ fontSize: 26, fontWeight: 700, color: "#c9a84c", fontFamily: FONT_DISPLAY }}>{formatMoney(p.basic_info?.registered_capital)}</div>
+          </div>
+        </div>
+      </div>
 
-      <Row gutter={16} style={{ marginBottom: 16 }}>
+      {/* Quick metrics */}
+      <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
+        <MetricCard label="授信额度" value={formatMoney(p.financial?.credit_limit)} color="#1a3a5c" />
+        <MetricCard label="已用额度" value={formatMoney(p.financial?.credit_used)} color="#ef4444" />
+        <MetricCard label="存款沉淀" value={formatMoney(p.financial?.deposit_balance)} color="#3b82f6" />
+        <MetricCard label="年营收" value={formatMoney(p.financial?.annual_revenue)} color="#22c55e" />
+      </div>
+
+      <Row gutter={20}>
         <Col span={12}>
-          <Card title="授信与存款">
-            <Descriptions column={1} size="small">
-              <Descriptions.Item label="授信额度">{formatMoney(p.financial?.credit_limit)}</Descriptions.Item>
-              <Descriptions.Item label="已用额度">{formatMoney(p.financial?.credit_used)}</Descriptions.Item>
-              <Descriptions.Item label="可用额度"><span style={{ color: "#00b42a" }}>{formatMoney(p.financial?.credit_available)}</span></Descriptions.Item>
-              <Descriptions.Item label="存款沉淀">{formatMoney(p.financial?.deposit_balance)}</Descriptions.Item>
-              <Descriptions.Item label="他行贷款">{p.financial?.other_bank_loans}</Descriptions.Item>
-              <Descriptions.Item label="年营收估算">{formatMoney(p.financial?.annual_revenue)}</Descriptions.Item>
-            </Descriptions>
-          </Card>
+          <Section title="企业基本信息" icon={<IconStorage />}>
+            <DataRow label="实际控制人" value={p.basic_info?.actual_controller} />
+            <DataRow label="员工规模" value={`${p.basic_info?.employee_count}人`} />
+            <DataRow label="成立日期" value={p.basic_info?.established_date} />
+            {p.basic_info?.group && <DataRow label="关联集团" value={p.basic_info.group} />}
+          </Section>
         </Col>
         <Col span={12}>
-          <Card title="风险信息">
-            <Descriptions column={1} size="small">
-              <Descriptions.Item label="征信状态"><Tag color={{ 正常: "green", 关注: "orange", 异常: "red" }[p.risk?.credit_report] || "gray"}>{p.risk?.credit_report}</Tag></Descriptions.Item>
-              <Descriptions.Item label="涉诉情况">{p.risk?.litigation_count}件 {p.risk?.litigation_amount > 0 ? "(涉案" + formatMoney(p.risk?.litigation_amount) + ")" : ""}</Descriptions.Item>
-              <Descriptions.Item label="舆情">
-                <Tag color={{ 正面: "green", 中性: "gray", 负面: "red" }[p.risk?.sentiment] || "gray"}>{p.risk?.sentiment}</Tag>
-              </Descriptions.Item>
-            </Descriptions>
+          <Section title="风险信息" icon={<IconSafe />}>
+            <DataRow label="征信状态" value={<Tag size="small" color={{ 正常: "green", 关注: "orange", 异常: "red" }[p.risk?.credit_report]}>{p.risk?.credit_report}</Tag>} />
+            <DataRow label="涉诉情况" value={`${p.risk?.litigation_count}件${p.risk?.litigation_amount > 0 ? " (涉案" + formatMoney(p.risk?.litigation_amount) + ")" : ""}`} />
+            <DataRow label="舆情" value={<Tag size="small" color={{ 正面: "green", 中性: "gray", 负面: "red" }[p.risk?.sentiment]}>{p.risk?.sentiment}</Tag>} />
             <div style={{ marginTop: 12 }}>
-              <div style={{ fontSize: 13, color: "#374151", marginBottom: 6 }}>授信使用率</div>
+              <div style={{ fontSize: 12, color: "#8896a6", marginBottom: 6 }}>授信使用率</div>
               <Progress percent={p.financial?.credit_limit > 0 ? Math.round((p.financial?.credit_used / p.financial?.credit_limit) * 100) : 0} status={p.financial?.credit_used / p.financial?.credit_limit > 0.7 ? "error" : "normal"} />
             </div>
-          </Card>
+          </Section>
         </Col>
       </Row>
 
-      <Row gutter={16} style={{ marginBottom: 16 }}>
-        {/* 业务行为 */}
+      <Row gutter={20}>
         <Col span={12}>
-          <Card title="业务行为">
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {[
-                { label: "结算活跃度", value: p.financial_behavior?.settlement_activity || "未知", color: "#165dff" },
-                { label: "代发工资人数", value: p.financial_behavior?.payroll_employees > 0 ? p.financial_behavior.payroll_employees + "人" : "未开通", color: "#1a3a5c" },
-                { label: "票据年发生额", value: p.financial_behavior?.annual_bill_amount > 0 ? formatMoney(p.financial_behavior.annual_bill_amount) : "无", color: "#c9a84c" },
-                { label: "跨境业务", value: p.financial_behavior?.cross_border ? "是" : "否", color: p.financial_behavior?.cross_border ? "#00b42a" : "#9ca3af" },
-              ].map((item) => (
-                <div key={item.label} style={{ display: "flex", justifyContent: "space-between", padding: "8px 10px", background: "#f9fafb", borderRadius: 6 }}>
-                  <span style={{ fontSize: 13, color: "#6b7280" }}>{item.label}</span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: item.color }}>{item.value}</span>
-                </div>
-              ))}
-            </div>
-          </Card>
+          <Section title="业务行为" icon={<IconApps />}>
+            {[
+              { label: "结算活跃度", value: p.financial_behavior?.settlement_activity || "未知", color: "#3b82f6" },
+              { label: "代发工资人数", value: p.financial_behavior?.payroll_employees > 0 ? p.financial_behavior.payroll_employees + "人" : "未开通", color: "#1a3a5c" },
+              { label: "票据年发生额", value: p.financial_behavior?.annual_bill_amount > 0 ? formatMoney(p.financial_behavior.annual_bill_amount) : "无", color: "#c9a84c" },
+              { label: "跨境业务", value: p.financial_behavior?.cross_border ? "是" : "否", color: p.financial_behavior?.cross_border ? "#22c55e" : "#94a3b8" },
+            ].map((item) => (
+              <div key={item.label} style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: "#f8f9fb", borderRadius: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 13, color: "#6b7280" }}>{item.label}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: item.color }}>{item.value}</span>
+              </div>
+            ))}
+          </Section>
         </Col>
-        {/* 关联关键人 */}
         <Col span={12}>
-          <Card title="关联关键人">
+          <Section title="关联关键人" icon={<IconUser />}>
             {(p.key_persons || []).map((kp, i) => (
-              <div key={i} style={{ display: "flex", gap: 12, padding: "10px 0", borderBottom: i < (p.key_persons || []).length - 1 ? "1px solid #f3f4f6" : "none" }}>
-                <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#1a3a5c", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>
+              <div key={i}
+                onClick={() => {
+                  if (kp.personal_id) {
+                    setReturnTo({ id: p.id, name: p.basic_info?.name });
+                    setTab("personal");
+                    selectCustomer(kp.personal_id, "personal");
+                  }
+                }}
+                style={{
+                  display: "flex", gap: 12, padding: "12px 14px", marginBottom: 8,
+                  background: "#f8f9fb", borderRadius: 10, cursor: kp.personal_id ? "pointer" : "default",
+                  transition: "all 0.15s", border: "1px solid transparent",
+                }}
+                onMouseEnter={(e) => { if (kp.personal_id) e.currentTarget.style.border = "1px solid #c9a84c"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.border = "1px solid transparent"; }}
+              >
+                <div style={{
+                  width: 42, height: 42, borderRadius: 10,
+                  background: "linear-gradient(135deg, #1a3a5c 0%, #234b73 100%)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 16, fontWeight: 700, color: "#c9a84c", flexShrink: 0,
+                }}>
                   {kp.name?.charAt(0)}
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 14, fontWeight: 600, color: "#1a212a" }}>{kp.name}</div>
-                  <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>{kp.role}</div>
-                  <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 2 }}>{kp.phone}</div>
+                  <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>{kp.role} · {kp.phone}</div>
                 </div>
-                <Tag size="small" color="arcoblue">{kp.role}</Tag>
+                {kp.personal_id && (
+                  <div style={{
+                    fontSize: 11, padding: "4px 10px", borderRadius: 6,
+                    background: "linear-gradient(135deg, #c9a84c 0%, #b8962e 100%)",
+                    color: "#fff", fontWeight: 600, alignSelf: "center",
+                  }}>
+                    查看画像 →
+                  </div>
+                )}
               </div>
             ))}
             {(!p.key_persons || p.key_persons.length === 0) && (
-              <div style={{ color: "#9ca3af", fontSize: 13 }}>暂无关联关键人</div>
+              <div style={{ color: "#b0b8c4", fontSize: 13, textAlign: "center", padding: 20 }}>暂无关联关键人</div>
             )}
-          </Card>
+          </Section>
         </Col>
       </Row>
 
-      <Row gutter={16} style={{ marginBottom: 16 }}>
+      <Row gutter={20}>
         <Col span={12}>
-          <Card title="业务覆盖">
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 6 }}>已覆盖产品</div>
+          <Section title="业务覆盖" icon={<IconApps />}>
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 12, color: "#8896a6", marginBottom: 8, fontWeight: 600 }}>已覆盖产品</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {(p.covered_products || []).map((pr, i) => <Tag key={i} color="blue">{pr}</Tag>)}
+                {(p.covered_products || []).map((pr, i) => (
+                  <span key={i} style={{ fontSize: 12, padding: "4px 12px", borderRadius: 6, background: "#eff6ff", color: "#3b82f6", fontWeight: 500 }}>{pr}</span>
+                ))}
               </div>
             </div>
             <div>
-              <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 6 }}>可拓展产品</div>
+              <div style={{ fontSize: 12, color: "#8896a6", marginBottom: 8, fontWeight: 600 }}>可拓展产品</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {(p.uncovered_products || []).map((pr, i) => <Tag key={i} color="orange">{pr}</Tag>)}
+                {(p.uncovered_products || []).map((pr, i) => (
+                  <span key={i} style={{ fontSize: 12, padding: "4px 12px", borderRadius: 6, background: "#fff7ed", color: "#f59e0b", fontWeight: 500 }}>{pr}</span>
+                ))}
               </div>
             </div>
-          </Card>
+          </Section>
         </Col>
         <Col span={12}>
-          <Card title="业务机会">
+          <Section title="业务机会" icon={<IconStar />}>
             {(p.suggestions || []).map((s, i) => (
-              <div key={i} style={{ fontSize: 13, color: "#374151", padding: "6px 0", borderBottom: "1px solid #f3f4f6", display: "flex", gap: 8 }}>
-                <span style={{ color: "#1a3a5c", fontWeight: 700 }}>·</span>
-                <span>{s}</span>
+              <div key={i} style={{
+                fontSize: 13, color: "#2d3748", padding: "10px 14px",
+                background: "#f8f9fb", borderRadius: 8, marginBottom: 8,
+                borderLeft: "3px solid #c9a84c",
+              }}>
+                {s}
               </div>
             ))}
-          </Card>
+          </Section>
         </Col>
       </Row>
 
-      {/* 触发事件 */}
-      <Card title="触发事件">
+      <Section title="触发事件" icon={<IconClockCircle />}>
         <EventTabs events={p.events || []} />
-      </Card>
+      </Section>
     </div>
   );
 
+  // ── Main Layout ──
+  const sidebarWidth = sidebarCollapsed ? 0 : 340;
+
   return (
-    <div style={{ display: "flex", gap: 16, height: "calc(100vh - 104px)" }}>
-      {/* 左侧客户列表 */}
-      <div style={{ width: 420, display: "flex", flexDirection: "column", gap: 12 }}>
-        <Card style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          <div style={{ marginBottom: 12 }}>
-            <Tabs activeKey={tab} onChange={(k) => { setTab(k); setSelectedId(null); setProfileData(null); }}>
-              <Tabs.Tab title="个人客户" key="personal" />
-              <Tabs.Tab title="企业客户" key="enterprise" />
-            </Tabs>
-            <Search
-              placeholder="搜索客户姓名 / ID"
-              value={search}
-              onChange={setSearch}
-              onSearch={() => fetchList()}
-              allowClear
-              style={{ marginTop: 8 }}
-            />
-            {/* 筛选 */}
-            {tab === "personal" && (
-              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                <Select
-                  placeholder="资产等级"
-                  allowClear
-                  onChange={(v) => setFilters((f) => ({ ...f, asset_level: v }))}
-                  options={[{ label: "大众客户", value: "大众客户" }, { label: "成长型客户", value: "成长型客户" }, { label: "中端客户", value: "中端客户" }, { label: "高净值客户", value: "高净值客户" }]}
-                  style={{ flex: 1, fontSize: 12 }}
-                />
-                <Select
-                  placeholder="生命周期"
-                  allowClear
-                  onChange={(v) => setFilters((f) => ({ ...f, lifecycle: v }))}
-                  options={[{ label: "新客户", value: "新客户" }, { label: "成熟期", value: "成熟期" }, { label: "衰退期", value: "衰退期" }, { label: "流失预警", value: "流失预警" }]}
-                  style={{ flex: 1, fontSize: 12 }}
-                />
-              </div>
-            )}
-          </div>
-          <div style={{ flex: 1, overflow: "auto" }}>
-            {loading ? (
-              <div style={{ display: "flex", justifyContent: "center", padding: 40 }}>
-                <Spin />
-              </div>
-            ) : (
-              <Table
-                columns={tab === "personal" ? personalColumns : enterpriseColumns}
-                data={listData.data || []}
-                size="small"
-                rowKey="id"
-                selectedRowKeys={[selectedId]}
-                onRow={(record) => ({
-                  onClick: () => selectCustomer(record.id),
-                  style: { cursor: "pointer" },
-                })}
-                rowClassName={() => "clickable-row"}
-                pagination={false}
-                style={{ fontSize: 13 }}
-              />
-            )}
-          </div>
-          {listData.total > 0 && (
-            <Pagination
-              current={currentPage}
-              pageSize={20}
-              total={listData.total}
-              onChange={(page) => { setCurrentPage(page); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-              size="small"
-              showTotal={(total) => `共 ${total} 条`}
-              style={{ marginTop: 8 }}
-            />
-          )}
-        </Card>
+    <div style={{ display: "flex", height: "calc(100vh - 104px)", background: C.bg, gap: 0 }}>
+      {/* Sidebar toggle */}
+      <div
+        onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+        style={{
+          width: 28, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
+          background: C.border, cursor: "pointer", borderRadius: "8px 0 0 8px",
+          transition: "all 0.2s",
+        }}
+      >
+        {sidebarCollapsed ? <IconRight style={{ color: "#6b7280", fontSize: 12 }} /> : <IconLeft style={{ color: "#6b7280", fontSize: 12 }} />}
       </div>
 
-      {/* 右侧画像 */}
-      <div style={{ flex: 1, overflow: "auto" }}>
+      {/* Left sidebar */}
+      <div style={{
+        width: sidebarWidth, flexShrink: 0, display: "flex", flexDirection: "column",
+        background: C.card, borderRight: `1px solid ${C.border}`,
+        transition: "width 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+        overflow: "hidden",
+      }}>
+        <div style={{ padding: "16px 14px 12px", borderBottom: `1px solid ${C.borderLt}` }}>
+          <Tabs activeKey={tab} onChange={(k) => { setTab(k); setSelectedId(null); setProfileData(null); }}
+            style={{ marginBottom: 10 }}>
+            <Tabs.Tab title="个人客户" key="personal" />
+            <Tabs.Tab title="企业客户" key="enterprise" />
+          </Tabs>
+          <Input
+            placeholder="搜索客户姓名 / ID"
+            prefix={<IconSearch style={{ color: "#b0b8c4" }} />}
+            value={search}
+            onChange={setSearch}
+            allowClear
+            style={{ marginBottom: 8 }}
+          />
+          {tab === "personal" && (
+            <div style={{ display: "flex", gap: 6 }}>
+              <Select placeholder="资产等级" allowClear size="small"
+                onChange={(v) => setFilters((f) => ({ ...f, asset_level: v }))}
+                options={[{ label: "大众客户", value: "大众客户" }, { label: "成长型客户", value: "成长型客户" }, { label: "中端客户", value: "中端客户" }, { label: "高净值客户", value: "高净值客户" }]}
+                style={{ flex: 1 }}
+              />
+              <Select placeholder="生命周期" allowClear size="small"
+                onChange={(v) => setFilters((f) => ({ ...f, lifecycle: v }))}
+                options={[{ label: "新客户", value: "新客户" }, { label: "成熟期", value: "成熟期" }, { label: "衰退期", value: "衰退期" }, { label: "流失预警", value: "流失预警" }]}
+                style={{ flex: 1 }}
+              />
+            </div>
+          )}
+          {tab === "enterprise" && (
+            <Select placeholder="行业" allowClear size="small"
+              onChange={(v) => setFilters((f) => ({ ...f, industry: v }))}
+              options={["能源","制造","贸易","科技","建筑","农业","金融服务","交通运输"].map(i => ({ label: i, value: i }))}
+              style={{ width: "100%" }}
+            />
+          )}
+        </div>
+
+        <div style={{ flex: 1, overflow: "auto", padding: "8px 8px" }}>
+          {loading ? (
+            <div style={{ display: "flex", justifyContent: "center", padding: 40 }}><Spin /></div>
+          ) : (
+            (listData.data || []).map((item) => (
+              <CustomerCard
+                key={item.id}
+                item={item}
+                isSelected={selectedId === item.id}
+                onClick={() => selectCustomer(item.id)}
+              />
+            ))
+          )}
+        </div>
+
+        {listData.total > 0 && (
+          <div style={{ padding: "8px 14px", borderTop: "1px solid #f0f2f5" }}>
+            <Pagination
+              current={currentPage} pageSize={20} total={listData.total}
+              onChange={(page) => setCurrentPage(page)}
+              size="mini" showTotal={(total) => `${total}条`}
+              simple
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Right content area */}
+      <div style={{ flex: 1, overflow: "auto", padding: 20 }}>
         {profileLoading ? (
-          <Card><div style={{ display: "flex", justifyContent: "center", padding: 80 }}><Spin size={40} /></div></Card>
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: 400 }}>
+            <Spin size={40} />
+          </div>
         ) : profileData ? (
           <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <div style={{ fontSize: 18, fontWeight: 600, color: "#1a212a" }}>
-                {tab === "personal" ? "个人" : "企业"}客户画像
+            {/* Back button + header */}
+            {returnTo && tab === "personal" && (
+              <div
+                onClick={() => { setTab("enterprise"); selectCustomer(returnTo.id, "enterprise"); setReturnTo(null); }}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  padding: "6px 14px", borderRadius: 8, background: "#eff6ff",
+                  color: "#3b82f6", fontSize: 13, cursor: "pointer", fontWeight: 500,
+                  marginBottom: 16, border: "1px solid #bfdbfe",
+                }}
+              >
+                ← 返回企业画像 ({returnTo.name})
               </div>
-              <div style={{ fontSize: 13, color: "#6b7280" }}>
-                {profileData.id}
-              </div>
-            </div>
+            )}
             {tab === "personal" ? renderPersonalProfile(profileData) : renderEnterpriseProfile(profileData)}
           </div>
         ) : (
-          <Card>
-            <div style={{ textAlign: "center", padding: 80, color: "#9ca3af" }}>
-              请从左侧选择客户查看画像
+          <div style={{
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+            height: "100%", color: "#b0b8c4",
+          }}>
+            <div style={{ width: 80, height: 80, borderRadius: 20, background: "#e8ecf1", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+              <IconUser style={{ fontSize: 32, color: "#94a3b8" }} />
             </div>
-          </Card>
+            <div style={{ fontSize: 15, fontWeight: 500 }}>请从左侧选择客户查看画像</div>
+            <div style={{ fontSize: 13, marginTop: 6 }}>选择客户后，详细画像将在此展示</div>
+          </div>
         )}
       </div>
     </div>

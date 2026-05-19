@@ -9,7 +9,12 @@
     <style>
       * { box-sizing: border-box; margin: 0; padding: 0; }
       html, body, #root { height: 100%; }
-      body { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; background: #f2f3f5; }
+      body { font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", "Helvetica Neue", sans-serif; background: #f2f3f5; -webkit-font-smoothing: antialiased; }
+      @media print {
+        [class*="arco-layout-sider"], [style*="position: fixed"][style*="top: 0"] { display: none !important; }
+        [class*="arco-layout-content"], [style*="margin-left: 200"] { margin-left: 0 !important; padding: 12px !important; }
+        [style*="margin-top: 56"] { margin-top: 0 !important; }
+      }
     </style>
   </head>
   <body>

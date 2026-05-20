@@ -248,7 +248,7 @@ test.describe("流程3: 企业客户画像查询 (PRD §3.2)", () => {
 
   test("TC-312 企业搜索过滤", async ({ page }) => {
     const searchInput = page.locator("input[placeholder*='搜索']");
-    await searchInput.fill("华能");
+    await searchInput.fill("华信");
     await page.waitForTimeout(1500);
     await waitForLoaded(page);
   });

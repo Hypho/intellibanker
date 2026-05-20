@@ -6,7 +6,7 @@ from backend.routers import insight, profile, workflow
 # flake8: noqa
 
 app = FastAPI(
-    title="山西银行智能营销平台",
+    title="银行智能营销平台",
     description="Demo API - 客户洞察 / 客户画像 / 业务流程自动化",
     version="1.0.0",
 )

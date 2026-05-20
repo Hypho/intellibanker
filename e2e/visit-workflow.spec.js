@@ -116,8 +116,8 @@ test.describe("流程4-6: 拜访全流程-详细验证", () => {
     await goToVisitRecording(page);
     const locationInput = page.locator("input[placeholder*='拜访地点']");
     if (await locationInput.count() > 0) {
-      await locationInput.fill("太原分行VIP室");
-      await expect(locationInput).toHaveValue("太原分行VIP室");
+      await locationInput.fill("东城支行VIP室");
+      await expect(locationInput).toHaveValue("东城支行VIP室");
     }
   });
 
@@ -277,7 +277,7 @@ test.describe("流程8: 角色与权限 (PRD §6)", () => {
   });
 
   test("TC-804 分行管理员角色数据隔离", async ({ page }) => {
-    await loginAs(page, "太原分行");
+    await loginAs(page, "东城支行");
     await navigateTo(page, "洞察报告");
     await waitForLoaded(page);
     await expectPageContains(page, "分行视角");

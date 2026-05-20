@@ -1,4 +1,4 @@
-# 山西银行智能营销平台 技术实施方案
+# 银行智能营销平台 技术实施方案
 
 **版本**：V1.0
 **日期**：2025年5月18日
@@ -172,7 +172,7 @@ bank-marketing-demo/
     "name": "张伟",
     "phone": "138****1234",
     "occupation": "企业主",
-    "branch": "太原分行",
+    "branch": "东城支行",
     "manager": "李娜",
     "account_open_date": "2019-03-15"
   },
@@ -212,7 +212,7 @@ bank-marketing-demo/
   "type": "enterprise",
   "id": "E001",
   "basic_info": {
-    "name": "山西某能源公司",
+    "name": "华信能源集团",
     "industry": "能源",
     "registered_capital": 50000000,
     "actual_controller": "王总",

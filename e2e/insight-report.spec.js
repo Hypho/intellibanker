@@ -29,7 +29,7 @@ test.describe("流程1: 客户洞察报告 (PRD §2)", () => {
     const branchSelect = page.locator(".arco-select").nth(1);
     await branchSelect.click();
     await page.waitForTimeout(500);
-    await page.click("text=太原分行");
+    await page.click("text=东城支行");
     await waitForLoaded(page);
     await expectPageContains(page, "位个人客户");
   });

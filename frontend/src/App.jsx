@@ -18,7 +18,7 @@ const MENU_ITEMS = [
 
 const ROLE_OPTIONS = [
   { label: "管理员 — 全行视角", value: "admin" },
-  { label: "分行行长 — 太原分行", value: "branch_manager" },
+  { label: "分行行长 — 东城支行", value: "branch_manager" },
   { label: "客户经理 — 李娜", value: "manager" },
 ];
 
@@ -52,10 +52,10 @@ export default function App() {
           boxShadow: "0 20px 60px rgba(0,0,0,0.3)", position: "relative",
         }}>
           <div style={{ width: 64, height: 64, borderRadius: 16, margin: "0 auto 20px", background: GRADIENT_ACCENT, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 8px 24px rgba(201,168,76,0.3)" }}>
-            <span style={{ fontSize: 28, color: "#fff", fontFamily: FONT_DISPLAY, fontWeight: 700 }}>晋</span>
+            <span style={{ fontSize: 28, color: "#fff", fontFamily: FONT_DISPLAY, fontWeight: 700 }}>智</span>
           </div>
           <div style={{ fontSize: 26, color: C.accent, fontFamily: FONT_DISPLAY, fontWeight: "bold", letterSpacing: 4, marginBottom: 6 }}>
-            山西银行
+            智慧银行
           </div>
           <div style={{ fontSize: 15, color: C.primary, fontWeight: 500, marginBottom: 36, letterSpacing: 1 }}>
             智能营销平台
@@ -95,7 +95,7 @@ export default function App() {
             width: 32, height: 32, borderRadius: 8,
             background: GRADIENT_ACCENT, display: "flex", alignItems: "center", justifyContent: "center",
           }}>
-            <span style={{ fontSize: 16, color: "#fff", fontFamily: FONT_DISPLAY, fontWeight: 700 }}>晋</span>
+            <span style={{ fontSize: 16, color: "#fff", fontFamily: FONT_DISPLAY, fontWeight: 700 }}>智</span>
           </div>
           <span style={{ color: C.accent, fontSize: 18, fontWeight: "bold", fontFamily: FONT_DISPLAY, letterSpacing: 2 }}>智慧银行</span>
         </div>

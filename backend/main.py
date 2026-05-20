@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.routers import insight, profile, workflow
+from backend.routers import insight, profile, workflow, agent
 # flake8: noqa
 
 app = FastAPI(
@@ -22,6 +22,7 @@ app.add_middleware(
 app.include_router(insight.router)
 app.include_router(profile.router)
 app.include_router(workflow.router)
+app.include_router(agent.router)
 
 
 @app.get("/health")

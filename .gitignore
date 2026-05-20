@@ -27,3 +27,14 @@ build/
 # IDE
 .idea/
 .vscode/
+
+# E2E
+e2e/node_modules/
+e2e/test-results/
+e2e/playwright-report/
+test-results/
+
+# Claude Code
+.claude/
+.mcp.json
+.repowise/

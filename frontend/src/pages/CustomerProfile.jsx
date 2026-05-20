@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { api } from "../api/client";
 import {
   Card, Select, Input, Tabs, Tag, Spin, Message, Progress, Grid, Badge, Pagination, Button, Tooltip,
@@ -26,17 +26,31 @@ export default function CustomerProfile({ role, roleConfig, externalTarget, onTa
   const [currentPage, setCurrentPage] = useState(1);
   const [returnTo, setReturnTo] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const pendingExternalRef = useRef(null);
+  const skipSearchEffectRef = useRef(false);
 
   useEffect(() => {
     if (externalTarget?.id) {
+      pendingExternalRef.current = externalTarget.id;
+      setSelectedId(externalTarget.id);
+      if (externalTarget.name) {
+        skipSearchEffectRef.current = true;
+        setSearch(externalTarget.name);
+      }
+      if (tab !== "personal") setTab("personal");
       selectCustomer(externalTarget.id, "personal");
-      setTab("personal");
-      if (externalTarget.name) setSearch(externalTarget.name);
+      fetchList(1, externalTarget.name || "").finally(() => {
+        pendingExternalRef.current = null;
+      });
       if (onTargetConsumed) onTargetConsumed();
     }
   }, [externalTarget]);
 
   useEffect(() => {
+    if (skipSearchEffectRef.current) {
+      skipSearchEffectRef.current = false;
+      return;
+    }
     setCurrentPage(1);
     fetchList(1);
   }, [tab, filters, search]);
@@ -45,15 +59,16 @@ export default function CustomerProfile({ role, roleConfig, externalTarget, onTa
     if (currentPage > 1) fetchList(currentPage);
   }, [currentPage]);
 
-  const fetchList = async (page) => {
+  const fetchList = async (page, searchOverride) => {
     const p = page || currentPage;
+    const s = searchOverride !== undefined ? searchOverride : search;
     setLoading(true);
     try {
       const res = tab === "personal"
-        ? await api.listPersonalProfiles({ page: p, page_size: 20, search, ...filters })
-        : await api.listEnterpriseProfiles({ page: p, page_size: 20, search, ...filters });
+        ? await api.listPersonalProfiles({ page: p, page_size: 20, search: s, ...filters })
+        : await api.listEnterpriseProfiles({ page: p, page_size: 20, search: s, ...filters });
       setListData(res);
-      if (res.data.length > 0 && !selectedId) {
+      if (res.data.length > 0 && !selectedId && !pendingExternalRef.current) {
         selectCustomer(res.data[0].id);
       }
     } catch (e) {
@@ -698,7 +713,15 @@ export default function CustomerProfile({ role, roleConfig, externalTarget, onTa
         overflow: "hidden",
       }}>
         <div style={{ padding: "16px 14px 12px", borderBottom: `1px solid ${C.borderLt}` }}>
-          <Tabs activeKey={tab} onChange={(k) => { setTab(k); setSelectedId(null); setProfileData(null); }}
+          <Tabs activeKey={tab} onChange={(k) => {
+            if (k !== tab) {
+              setTab(k);
+              if (!pendingExternalRef.current) {
+                setSelectedId(null);
+                setProfileData(null);
+              }
+            }
+          }}
             style={{ marginBottom: 10 }}>
             <Tabs.TabPane title="个人客户" key="personal" />
             <Tabs.TabPane title="企业客户" key="enterprise" />

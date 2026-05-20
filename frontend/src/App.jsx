@@ -1,10 +1,11 @@
 import React, { useState, useRef } from "react";
 import { Layout, Card, Select, Tag } from "@arco-design/web-react";
-import { IconUser, IconDashboard, IconFile, IconCalendar, IconThunderbolt } from "@arco-design/web-react/icon";
+import { IconUser, IconDashboard, IconFile, IconCalendar, IconThunderbolt, IconRobot } from "@arco-design/web-react/icon";
 import InsightReport from "./pages/InsightReport";
 import CustomerProfile from "./pages/CustomerProfile";
 import VisitWorkflow from "./pages/VisitWorkflow";
 import EventDashboard from "./pages/EventDashboard";
+import Assistant from "./pages/Assistant";
 import { C, FONT_DISPLAY, GRADIENT_HERO, GRADIENT_ACCENT, RADIUS } from "./theme";
 
 const { Sider, Content } = Layout;
@@ -14,6 +15,7 @@ const MENU_ITEMS = [
   { key: "profile", label: "客户画像", icon: <IconUser /> },
   { key: "workflow", label: "拜访流程", icon: <IconCalendar /> },
   { key: "events", label: "事件引擎", icon: <IconThunderbolt /> },
+  { key: "assistant", label: "智能助手", icon: <IconRobot /> },
 ];
 
 const ROLE_OPTIONS = [
@@ -146,6 +148,7 @@ export default function App() {
           {active === "profile" && <CustomerProfile role={role} roleConfig={roleConfig} externalTarget={profileTarget} onTargetConsumed={() => setProfileTarget(null)} />}
           {active === "workflow" && <VisitWorkflow role={role} roleConfig={roleConfig} />}
           {active === "events" && <EventDashboard onNavigateToProfile={navigateToProfile} />}
+          {active === "assistant" && <Assistant />}
         </Content>
       </Layout>
     </Layout>

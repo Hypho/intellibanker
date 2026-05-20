@@ -46,4 +46,48 @@ export const api = {
   // 事件触发器
   getEventTriggers: (type, id) =>
     request(`/workflow/event-triggers?customer_type=${type}&customer_id=${id}`),
+
+  // Agent chat (SSE streaming)
+  streamChat: (message, history = [], onEvent) => {
+    const controller = new AbortController();
+    fetch(BASE + "/agent/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message, history }),
+      signal: controller.signal,
+    })
+      .then((res) => {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        function read() {
+          reader.read().then(({ done, value }) => {
+            if (done) { onEvent({ event: "done", data: {} }); return; }
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop();
+            let eventType = null;
+            for (const line of lines) {
+              if (line.startsWith("event: ")) {
+                eventType = line.slice(7).trim();
+              } else if (line.startsWith("data: ") && eventType) {
+                try {
+                  const data = JSON.parse(line.slice(6));
+                  onEvent({ event: eventType, data });
+                } catch { /* skip */ }
+                eventType = null;
+              }
+            }
+            read();
+          });
+        }
+        read();
+      })
+      .catch((err) => {
+        if (err.name !== "AbortError") {
+          onEvent({ event: "error", data: { message: err.message } });
+        }
+      });
+    return controller;
+  },
 };

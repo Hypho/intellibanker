@@ -1,7 +1,10 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Input, Button, Tag, Spin } from "@arco-design/web-react";
-import { IconRobot, IconSend, IconDelete, IconCode } from "@arco-design/web-react/icon";
+import { IconRobot, IconSend, IconDelete, IconCode, IconCopy, IconCheck } from "@arco-design/web-react/icon";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { api } from "../api/client";
 import { C, FONT_MONO, GRADIENT_SUBTLE, RADIUS, SECTION_STYLE } from "../theme";
 
@@ -109,72 +112,126 @@ function ThinkingIndicator({ toolEvents }) {
   );
 }
 
-/* ── Markdown renderer ── */
+/* ── Code block with copy button + syntax highlighting ── */
+function CodeBlock({ language, children }) {
+  const [copied, setCopied] = useState(false);
+  const code = String(children).replace(/\n$/, "");
+
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(code).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, [code]);
+
+  return (
+    <div style={{ position: "relative", margin: "6px 0 10px", borderRadius: RADIUS.sm, overflow: "hidden" }}>
+      <div style={{
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        padding: "4px 12px", background: "#161b22", borderBottom: "1px solid #30363d",
+      }}>
+        <span style={{ fontSize: 11, color: "#8b949e", fontFamily: FONT_MONO }}>{language || "code"}</span>
+        <button
+          onClick={handleCopy}
+          style={{
+            display: "flex", alignItems: "center", gap: 4, background: "none", border: "none",
+            cursor: "pointer", color: copied ? "#3fb950" : "#8b949e", fontSize: 11, padding: "2px 6px",
+          }}
+        >
+          {copied ? <IconCheck style={{ fontSize: 12 }} /> : <IconCopy style={{ fontSize: 12 }} />}
+          {copied ? "已复制" : "复制"}
+        </button>
+      </div>
+      <SyntaxHighlighter
+        language={language || "text"}
+        style={oneDark}
+        customStyle={{
+          margin: 0, borderRadius: 0, padding: "10px 14px",
+          fontSize: 12.5, fontFamily: FONT_MONO, lineHeight: 1.6,
+          background: "#1e2127",
+        }}
+        wrapLongLines
+      >
+        {code}
+      </SyntaxHighlighter>
+    </div>
+  );
+}
+
+/* ── Markdown renderer (GFM + syntax highlighting) ── */
 function MarkdownContent({ content }) {
   return (
     <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
       components={{
         p: ({ children }) => <p style={{ margin: "0 0 8px", lineHeight: 1.7 }}>{children}</p>,
         ul: ({ children }) => <ul style={{ margin: "4px 0 8px 18px", lineHeight: 1.7 }}>{children}</ul>,
         ol: ({ children }) => <ol style={{ margin: "4px 0 8px 18px", lineHeight: 1.7 }}>{children}</ol>,
         li: ({ children }) => <li style={{ marginBottom: 2 }}>{children}</li>,
-        h1: ({ children }) => <h1 style={{ fontSize: 18, fontWeight: 700, margin: "12px 0 6px" }}>{children}</h1>,
-        h2: ({ children }) => <h2 style={{ fontSize: 16, fontWeight: 700, margin: "10px 0 6px" }}>{children}</h2>,
-        h3: ({ children }) => <h3 style={{ fontSize: 14, fontWeight: 600, margin: "8px 0 4px" }}>{children}</h3>,
+        h1: ({ children }) => <h1 style={{ fontSize: 18, fontWeight: 700, margin: "14px 0 8px", borderBottom: `1px solid ${C.border}`, paddingBottom: 6 }}>{children}</h1>,
+        h2: ({ children }) => <h2 style={{ fontSize: 16, fontWeight: 700, margin: "12px 0 6px" }}>{children}</h2>,
+        h3: ({ children }) => <h3 style={{ fontSize: 14, fontWeight: 600, margin: "10px 0 4px" }}>{children}</h3>,
         strong: ({ children }) => <strong style={{ fontWeight: 600, color: C.text }}>{children}</strong>,
+        em: ({ children }) => <em style={{ color: C.textSec }}>{children}</em>,
+        del: ({ children }) => <del style={{ color: C.textDim }}>{children}</del>,
+        a: ({ href, children }) => (
+          <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: C.info, textDecoration: "none" }}>{children}</a>
+        ),
+        hr: () => <hr style={{ border: "none", borderTop: `1px solid ${C.border}`, margin: "12px 0" }} />,
         code: ({ children, className }) => {
-          const isBlock = className?.includes("language-");
-          if (isBlock) {
-            return (
-              <pre style={{
-                background: "#1e293b", color: "#e2e8f0", padding: "10px 14px",
-                borderRadius: RADIUS.sm, overflow: "auto", fontSize: 12,
-                fontFamily: FONT_MONO, margin: "6px 0 10px",
-              }}>
-                <code>{children}</code>
-              </pre>
-            );
+          const match = /language-(\w+)/.exec(className || "");
+          if (match) {
+            return <CodeBlock language={match[1]}>{children}</CodeBlock>;
+          }
+          if (className) {
+            return <CodeBlock language={className.replace("language-", "")}>{children}</CodeBlock>;
           }
           return (
             <code style={{
-              background: "#f1f5f9", color: C.danger, padding: "1px 5px",
+              background: "#f1f5f9", color: "#d63384", padding: "1px 5px",
               borderRadius: 4, fontSize: "0.9em", fontFamily: FONT_MONO,
             }}>
               {children}
             </code>
           );
         },
+        pre: ({ children }) => <>{children}</>,
         table: ({ children }) => (
-          <table style={{
-            borderCollapse: "collapse", margin: "6px 0 10px", width: "100%",
-            fontSize: 12.5,
-          }}>
-            {children}
-          </table>
+          <div style={{ overflow: "auto", margin: "6px 0 10px", borderRadius: RADIUS.sm, border: `1px solid ${C.border}` }}>
+            <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 12.5 }}>{children}</table>
+          </div>
         ),
+        thead: ({ children }) => <thead style={{ background: "#f8fafc" }}>{children}</thead>,
         th: ({ children }) => (
-          <th style={{
-            border: `1px solid ${C.border}`, padding: "6px 10px",
-            background: "#f8fafc", fontWeight: 600, textAlign: "left",
-          }}>
-            {children}
-          </th>
+          <th style={{ border: `1px solid ${C.border}`, padding: "7px 12px", fontWeight: 600, textAlign: "left", whiteSpace: "nowrap" }}>{children}</th>
         ),
         td: ({ children }) => (
-          <td style={{
-            border: `1px solid ${C.border}`, padding: "5px 10px",
-          }}>
-            {children}
-          </td>
+          <td style={{ border: `1px solid ${C.border}`, padding: "6px 12px" }}>{children}</td>
         ),
+        tr: ({ children }) => <tr style={{ borderBottom: `1px solid ${C.border}` }}>{children}</tr>,
         blockquote: ({ children }) => (
           <blockquote style={{
             borderLeft: `3px solid ${C.accent}`, paddingLeft: 12,
-            margin: "6px 0 10px", color: C.textSec,
+            margin: "6px 0 10px", color: C.textSec, background: `${C.accent}06`,
+            padding: "8px 12px", borderRadius: `0 ${RADIUS.sm}px ${RADIUS.sm}px 0`,
           }}>
             {children}
           </blockquote>
         ),
+        input: ({ type, checked, disabled }) => {
+          if (type === "checkbox") {
+            return (
+              <input
+                type="checkbox"
+                checked={checked}
+                disabled={disabled}
+                readOnly
+                style={{ marginRight: 6, accentColor: C.primary }}
+              />
+            );
+          }
+          return <input type={type} />;
+        },
       }}
     >
       {content}

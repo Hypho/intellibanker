@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Input, Button, Tag } from "@arco-design/web-react";
-import { IconRobot, IconSend, IconDelete, IconTool } from "@arco-design/web-react/icon";
+import { Input, Button, Tag, Spin } from "@arco-design/web-react";
+import { IconRobot, IconSend, IconDelete, IconDown, IconRight } from "@arco-design/web-react/icon";
+import ReactMarkdown from "react-markdown";
 import { api } from "../api/client";
 import { C, FONT_MONO, GRADIENT_SUBTLE, RADIUS, SECTION_STYLE } from "../theme";
 
@@ -23,34 +24,165 @@ const TOOL_NAME_MAP = {
   derive_customer_tags_and_tasks: "推导标签和任务",
 };
 
-function ToolEvent({ te }) {
+/* ── Tool events: collapsible section ── */
+function ToolEventsPanel({ toolEvents }) {
+  if (!toolEvents?.length) return null;
+  const callCount = toolEvents.filter((t) => t.event === "tool_call").length;
+  return (
+    <details style={{ marginBottom: 8 }}>
+      <summary style={{
+        display: "flex", alignItems: "center", gap: 6,
+        padding: "6px 12px", borderRadius: RADIUS.sm,
+        background: "#f8fafc", border: `1px solid ${C.border}`,
+        cursor: "pointer", fontSize: 12, color: C.textSec,
+        listStyle: "none",
+      }}>
+        <IconTool style={{ fontSize: 13, color: C.info }} />
+        <span>调用了 <b>{callCount}</b> 个工具</span>
+        <span style={{ marginLeft: "auto", fontSize: 10, color: C.textDim }}>点击展开</span>
+      </summary>
+      <div style={{ padding: "6px 0 0 4px" }}>
+        {toolEvents.map((te, i) => (
+          <ToolEventLine key={i} te={te} />
+        ))}
+      </div>
+    </details>
+  );
+}
+
+function ToolEventLine({ te }) {
   const isCall = te.event === "tool_call";
   return (
     <div style={{
-      padding: "6px 12px", margin: "4px 0", borderRadius: RADIUS.sm,
+      display: "flex", alignItems: "flex-start", gap: 8,
+      padding: "4px 8px", margin: "2px 0", borderRadius: 6,
       background: isCall ? "#eff6ff" : "#f0fdf4",
       border: `1px solid ${isCall ? "#bfdbfe" : "#bbf7d0"}`,
       fontSize: 12, fontFamily: FONT_MONO,
     }}>
-      <Tag size="small" color={isCall ? "blue" : "green"} style={{ marginRight: 8 }}>
-        {isCall ? "调用工具" : "工具结果"}
+      <Tag size="small" color={isCall ? "blue" : "green"} style={{ flexShrink: 0 }}>
+        {isCall ? "调用" : "结果"}
       </Tag>
-      <span style={{ fontWeight: 600, color: C.text }}>
-        {TOOL_NAME_MAP[te.name] || te.name}
-      </span>
-      {!isCall && te.content && (
-        <div style={{
-          marginTop: 4, color: C.textSec, fontSize: 11,
-          maxHeight: 80, overflow: "auto", whiteSpace: "pre-wrap",
-          wordBreak: "break-all",
-        }}>
-          {te.content.length > 200 ? te.content.slice(0, 200) + "..." : te.content}
-        </div>
-      )}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ fontWeight: 600, color: C.text }}>
+          {TOOL_NAME_MAP[te.name] || te.name}
+        </span>
+        {!isCall && te.content && (
+          <div style={{
+            marginTop: 2, color: C.textSec, fontSize: 11,
+            maxHeight: 60, overflow: "auto", whiteSpace: "pre-wrap",
+            wordBreak: "break-all",
+          }}>
+            {te.content.length > 200 ? te.content.slice(0, 200) + "..." : te.content}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
+/* ── Thinking indicator ── */
+function ThinkingIndicator({ toolEvents }) {
+  const lastCall = [...(toolEvents || [])].reverse().find((t) => t.event === "tool_call");
+  const lastResult = [...(toolEvents || [])].reverse().find((t) => t.event === "tool_result");
+  const hasResults = toolEvents?.some((t) => t.event === "tool_result");
+
+  let statusText = "正在思考...";
+  if (lastCall && !lastResult) {
+    statusText = `正在调用 ${TOOL_NAME_MAP[lastCall.name] || lastCall.name}...`;
+  } else if (hasResults && !lastResult) {
+    statusText = "正在分析数据...";
+  } else if (hasResults) {
+    statusText = "正在生成回答...";
+  }
+
+  return (
+    <div style={{
+      display: "inline-flex", alignItems: "center", gap: 8,
+      padding: "8px 14px", borderRadius: RADIUS.md,
+      background: C.card, border: `1px solid ${C.border}`,
+      color: C.textMuted, fontSize: 13,
+    }}>
+      <Spin size={14} />
+      <span>{statusText}</span>
+    </div>
+  );
+}
+
+/* ── Markdown renderer ── */
+function MarkdownContent({ content }) {
+  return (
+    <ReactMarkdown
+      components={{
+        p: ({ children }) => <p style={{ margin: "0 0 8px", lineHeight: 1.7 }}>{children}</p>,
+        ul: ({ children }) => <ul style={{ margin: "4px 0 8px 18px", lineHeight: 1.7 }}>{children}</ul>,
+        ol: ({ children }) => <ol style={{ margin: "4px 0 8px 18px", lineHeight: 1.7 }}>{children}</ol>,
+        li: ({ children }) => <li style={{ marginBottom: 2 }}>{children}</li>,
+        h1: ({ children }) => <h1 style={{ fontSize: 18, fontWeight: 700, margin: "12px 0 6px" }}>{children}</h1>,
+        h2: ({ children }) => <h2 style={{ fontSize: 16, fontWeight: 700, margin: "10px 0 6px" }}>{children}</h2>,
+        h3: ({ children }) => <h3 style={{ fontSize: 14, fontWeight: 600, margin: "8px 0 4px" }}>{children}</h3>,
+        strong: ({ children }) => <strong style={{ fontWeight: 600, color: C.text }}>{children}</strong>,
+        code: ({ children, className }) => {
+          const isBlock = className?.includes("language-");
+          if (isBlock) {
+            return (
+              <pre style={{
+                background: "#1e293b", color: "#e2e8f0", padding: "10px 14px",
+                borderRadius: RADIUS.sm, overflow: "auto", fontSize: 12,
+                fontFamily: FONT_MONO, margin: "6px 0 10px",
+              }}>
+                <code>{children}</code>
+              </pre>
+            );
+          }
+          return (
+            <code style={{
+              background: "#f1f5f9", color: C.danger, padding: "1px 5px",
+              borderRadius: 4, fontSize: "0.9em", fontFamily: FONT_MONO,
+            }}>
+              {children}
+            </code>
+          );
+        },
+        table: ({ children }) => (
+          <table style={{
+            borderCollapse: "collapse", margin: "6px 0 10px", width: "100%",
+            fontSize: 12.5,
+          }}>
+            {children}
+          </table>
+        ),
+        th: ({ children }) => (
+          <th style={{
+            border: `1px solid ${C.border}`, padding: "6px 10px",
+            background: "#f8fafc", fontWeight: 600, textAlign: "left",
+          }}>
+            {children}
+          </th>
+        ),
+        td: ({ children }) => (
+          <td style={{
+            border: `1px solid ${C.border}`, padding: "5px 10px",
+          }}>
+            {children}
+          </td>
+        ),
+        blockquote: ({ children }) => (
+          <blockquote style={{
+            borderLeft: `3px solid ${C.accent}`, paddingLeft: 12,
+            margin: "6px 0 10px", color: C.textSec,
+          }}>
+            {children}
+          </blockquote>
+        ),
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  );
+}
+
+/* ── Message bubble ── */
 function MessageBubble({ msg }) {
   const isUser = msg.role === "user";
   return (
@@ -68,29 +200,32 @@ function MessageBubble({ msg }) {
         </div>
       )}
       <div style={{ maxWidth: "75%" }}>
-        {msg.toolEvents?.map((te, i) => <ToolEvent key={i} te={te} />)}
-        {(msg.content || msg.isStreaming) && (
+        {/* Tool events (collapsible) */}
+        {msg.toolEvents?.length > 0 && <ToolEventsPanel toolEvents={msg.toolEvents} />}
+
+        {/* Thinking indicator (while streaming, before content appears) */}
+        {msg.isStreaming && !msg.content && <ThinkingIndicator toolEvents={msg.toolEvents} />}
+
+        {/* Answer content (Markdown) */}
+        {(msg.content || (msg.isStreaming && msg.content)) && (
           <div style={{
             padding: "10px 16px", borderRadius: RADIUS.md,
             background: isUser ? C.primary : C.card,
             color: isUser ? "#fff" : C.text,
             border: isUser ? "none" : `1px solid ${C.border}`,
-            fontSize: 14, lineHeight: 1.7, whiteSpace: "pre-wrap",
+            fontSize: 14, lineHeight: 1.7,
             boxShadow: isUser ? "none" : "0 1px 4px rgba(0,0,0,0.04)",
           }}>
-            {msg.content}
+            {isUser ? (
+              <span style={{ whiteSpace: "pre-wrap" }}>{msg.content}</span>
+            ) : (
+              <MarkdownContent content={msg.content} />
+            )}
             {msg.isStreaming && <span style={{ animation: "blink 1s infinite" }}>|</span>}
           </div>
         )}
-        {msg.isStreaming && !msg.content && !msg.toolEvents?.length && (
-          <div style={{
-            padding: "10px 16px", borderRadius: RADIUS.md,
-            background: C.card, border: `1px solid ${C.border}`,
-            color: C.textMuted, fontSize: 13,
-          }}>
-            <IconRobot style={{ marginRight: 6 }} />思考中...
-          </div>
-        )}
+
+        {/* Error */}
         {msg.error && (
           <div style={{
             padding: "10px 16px", borderRadius: RADIUS.md,
@@ -105,6 +240,7 @@ function MessageBubble({ msg }) {
   );
 }
 
+/* ── Main component ── */
 export default function Assistant() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Input, Button, Tag, Spin } from "@arco-design/web-react";
-import { IconRobot, IconSend, IconDelete, IconDown, IconRight } from "@arco-design/web-react/icon";
+import { IconRobot, IconSend, IconDelete, IconCode } from "@arco-design/web-react/icon";
 import ReactMarkdown from "react-markdown";
 import { api } from "../api/client";
 import { C, FONT_MONO, GRADIENT_SUBTLE, RADIUS, SECTION_STYLE } from "../theme";
@@ -37,7 +37,7 @@ function ToolEventsPanel({ toolEvents }) {
         cursor: "pointer", fontSize: 12, color: C.textSec,
         listStyle: "none",
       }}>
-        <IconTool style={{ fontSize: 13, color: C.info }} />
+        <IconCode style={{ fontSize: 13, color: C.info }} />
         <span>调用了 <b>{callCount}</b> 个工具</span>
         <span style={{ marginLeft: "auto", fontSize: 10, color: C.textDim }}>点击展开</span>
       </summary>

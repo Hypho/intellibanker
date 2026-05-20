@@ -298,19 +298,57 @@ function MessageBubble({ msg }) {
 }
 
 /* ── Main component ── */
-export default function Assistant() {
+export default function Assistant({ role = "admin" }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+  const [sessionId, setSessionId] = useState(null);
+  const [sessions, setSessions] = useState([]);
   const streamRef = useRef(null);
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
+  const saveTimerRef = useRef(null);
 
+  // Load sessions list on mount
+  useEffect(() => {
+    api.listChatSessions(role).then((d) => setSessions(d.sessions || [])).catch(() => {});
+  }, [role]);
+
+  // Auto-scroll
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Auto-save after conversation updates (debounced)
+  const scheduleSave = (msgs) => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      if (msgs.length >= 2) {
+        const cleanMsgs = msgs.filter((m) => !m.isStreaming).map(({ role, content, toolEvents }) => ({
+          role, content, toolEvents: toolEvents || [],
+        }));
+        if (cleanMsgs.length >= 2) {
+          api.saveChatSession(role, cleanMsgs, "", sessionId).then((d) => {
+            if (d.session_id && !sessionId) setSessionId(d.session_id);
+            api.listChatSessions(role).then((r) => setSessions(r.sessions || [])).catch(() => {});
+          }).catch(() => {});
+        }
+      }
+    }, 1500);
+  };
+
+  const loadSession = async (sid) => {
+    try {
+      const session = await api.loadChatSession(sid);
+      const loadedMsgs = (session.messages || []).map((m) => ({
+        ...m, toolEvents: m.toolEvents || [],
+      }));
+      setMessages(loadedMsgs);
+      setSessionId(sid);
+    } catch { /* ignore */ }
+  };
 
   const sendMessage = (text) => {
     const content = (text || input).trim();
@@ -367,6 +405,7 @@ export default function Assistant() {
           const last = { ...next[next.length - 1] };
           last.isStreaming = false;
           next[next.length - 1] = last;
+          scheduleSave(next);
           return next;
         });
         setIsStreaming(false);
@@ -379,7 +418,14 @@ export default function Assistant() {
   const clearChat = () => {
     if (streamRef.current) streamRef.current.abort();
     setMessages([]);
+    setSessionId(null);
     setIsStreaming(false);
+  };
+
+  const deleteSession = async (sid) => {
+    await api.deleteChatSession(sid).catch(() => {});
+    setSessions((prev) => prev.filter((s) => s.id !== sid));
+    if (sid === sessionId) clearChat();
   };
 
   const handleKeyDown = (e) => {
@@ -390,105 +436,153 @@ export default function Assistant() {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 56px - 48px)" }}>
-      {/* Header */}
+    <div style={{ display: "flex", gap: 16, height: "calc(100vh - 56px - 48px)" }}>
+      {/* Session sidebar */}
       <div style={{
-        display: "flex", justifyContent: "space-between", alignItems: "center",
-        marginBottom: 16, padding: "16px 24px",
-        background: GRADIENT_SUBTLE, borderRadius: RADIUS.lg,
-        border: `1px solid ${C.border}`, ...SECTION_STYLE,
+        width: 220, flexShrink: 0, display: "flex", flexDirection: "column",
+        background: C.card, borderRadius: RADIUS.lg, border: `1px solid ${C.border}`,
+        overflow: "hidden",
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <IconRobot style={{ fontSize: 22, color: C.primary }} />
-          <div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: C.text, letterSpacing: "0.02em" }}>智能助手</div>
-            <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>基于 LangGraph Agent 的多步推理对话</div>
+        <div style={{
+          padding: "12px 14px", borderBottom: `1px solid ${C.border}`,
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+        }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>历史对话</span>
+          <Button type="text" size="mini" onClick={clearChat} style={{ fontSize: 12, color: C.info }}>+ 新建</Button>
+        </div>
+        <div style={{ flex: 1, overflow: "auto", padding: "4px 0" }}>
+          {sessions.length === 0 ? (
+            <div style={{ padding: "20px 14px", color: C.textDim, fontSize: 12, textAlign: "center" }}>暂无历史对话</div>
+          ) : (
+            sessions.map((s) => (
+              <div
+                key={s.id}
+                onClick={() => loadSession(s.id)}
+                style={{
+                  padding: "8px 14px", cursor: "pointer", transition: "background 0.15s",
+                  background: sessionId === s.id ? `${C.primary}0a` : "transparent",
+                  borderLeft: sessionId === s.id ? `2px solid ${C.primary}` : "2px solid transparent",
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                }}
+                onMouseEnter={(e) => { if (sessionId !== s.id) e.currentTarget.style.background = "#f8fafc"; }}
+                onMouseLeave={(e) => { if (sessionId !== s.id) e.currentTarget.style.background = "transparent"; }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 12.5, color: C.text, overflow: "hidden",
+                    textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  }}>
+                    {s.title || "未命名对话"}
+                  </div>
+                  <div style={{ fontSize: 10.5, color: C.textDim, marginTop: 2 }}>
+                    {(s.updated_at || "").slice(0, 16).replace("T", " ")}
+                  </div>
+                </div>
+                <IconDelete
+                  style={{ fontSize: 12, color: C.textDim, cursor: "pointer", flexShrink: 0, marginLeft: 4 }}
+                  onClick={(e) => { e.stopPropagation(); deleteSession(s.id); }}
+                />
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* Chat area */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+        {/* Header */}
+        <div style={{
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+          marginBottom: 16, padding: "14px 20px",
+          background: GRADIENT_SUBTLE, borderRadius: RADIUS.lg,
+          border: `1px solid ${C.border}`, ...SECTION_STYLE,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <IconRobot style={{ fontSize: 22, color: C.primary }} />
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: C.text, letterSpacing: "0.02em" }}>智能助手</div>
+              <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>基于 LangGraph Agent 的多步推理对话</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <Tag size="small" color="arcoblue">DeepSeek</Tag>
+            <Tag size="small" color="green">LangGraph</Tag>
+            {sessionId && <Tag size="small" color="orangered">已保存</Tag>}
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <Tag size="small" color="arcoblue">DeepSeek</Tag>
-          <Tag size="small" color="green">LangGraph</Tag>
+
+        {/* Messages */}
+        <div ref={scrollRef} style={{
+          flex: 1, overflow: "auto", padding: "8px 0",
+          background: C.bg, borderRadius: RADIUS.md,
+        }}>
+          {messages.length === 0 ? (
+            <div style={{
+              display: "flex", flexDirection: "column", alignItems: "center",
+              justifyContent: "center", height: "100%", padding: 40,
+            }}>
+              <div style={{
+                width: 64, height: 64, borderRadius: 16, marginBottom: 20,
+                background: GRADIENT_SUBTLE, border: `1px solid ${C.border}`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <IconRobot style={{ fontSize: 28, color: C.primary }} />
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 600, color: C.text, marginBottom: 8 }}>
+                你好，我是智能营销助手
+              </div>
+              <div style={{ fontSize: 13, color: C.textMuted, marginBottom: 28, textAlign: "center" }}>
+                我可以帮你分析客户数据、查询经营指标、生成营销建议。<br />
+                试试下面的问题：
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", maxWidth: 500 }}>
+                {SUGGESTIONS.map((s) => (
+                  <div
+                    key={s}
+                    onClick={() => sendMessage(s)}
+                    style={{
+                      padding: "8px 16px", borderRadius: RADIUS.sm, cursor: "pointer",
+                      background: C.card, border: `1px solid ${C.border}`,
+                      fontSize: 13, color: C.textSec, transition: "all 0.2s",
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.textSec; }}
+                  >
+                    {s}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            messages.map((msg, i) => <MessageBubble key={i} msg={msg} />)
+          )}
+        </div>
+
+        {/* Input */}
+        <div style={{
+          display: "flex", gap: 10, padding: "12px 0 0",
+          borderTop: `1px solid ${C.border}`, marginTop: 12,
+        }}>
+          <Input.TextArea
+            ref={inputRef}
+            value={input}
+            onChange={setInput}
+            onKeyDown={handleKeyDown}
+            placeholder={isStreaming ? "助手正在回答中..." : "输入问题，按 Enter 发送..."}
+            disabled={isStreaming}
+            autoSize={{ minRows: 1, maxRows: 4 }}
+            style={{ flex: 1, borderRadius: RADIUS.sm }}
+          />
           <Button
-            type="outline" size="mini" icon={<IconDelete />}
-            onClick={clearChat}
-            style={{ borderRadius: RADIUS.sm, borderColor: C.border, color: C.textSec, marginLeft: 8 }}
+            type="primary"
+            icon={<IconSend />}
+            onClick={() => sendMessage()}
+            disabled={!input.trim() || isStreaming}
+            style={{ borderRadius: RADIUS.sm, height: "auto", alignSelf: "flex-end" }}
           >
-            清空
+            发送
           </Button>
         </div>
-      </div>
-
-      {/* Messages */}
-      <div ref={scrollRef} style={{
-        flex: 1, overflow: "auto", padding: "8px 0",
-        background: C.bg, borderRadius: RADIUS.md,
-      }}>
-        {messages.length === 0 ? (
-          <div style={{
-            display: "flex", flexDirection: "column", alignItems: "center",
-            justifyContent: "center", height: "100%", padding: 40,
-          }}>
-            <div style={{
-              width: 64, height: 64, borderRadius: 16, marginBottom: 20,
-              background: GRADIENT_SUBTLE, border: `1px solid ${C.border}`,
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <IconRobot style={{ fontSize: 28, color: C.primary }} />
-            </div>
-            <div style={{ fontSize: 16, fontWeight: 600, color: C.text, marginBottom: 8 }}>
-              你好，我是智能营销助手
-            </div>
-            <div style={{ fontSize: 13, color: C.textMuted, marginBottom: 28, textAlign: "center" }}>
-              我可以帮你分析客户数据、查询经营指标、生成营销建议。<br />
-              试试下面的问题：
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", maxWidth: 500 }}>
-              {SUGGESTIONS.map((s) => (
-                <div
-                  key={s}
-                  onClick={() => sendMessage(s)}
-                  style={{
-                    padding: "8px 16px", borderRadius: RADIUS.sm, cursor: "pointer",
-                    background: C.card, border: `1px solid ${C.border}`,
-                    fontSize: 13, color: C.textSec, transition: "all 0.2s",
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.textSec; }}
-                >
-                  {s}
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          messages.map((msg, i) => <MessageBubble key={i} msg={msg} />)
-        )}
-      </div>
-
-      {/* Input */}
-      <div style={{
-        display: "flex", gap: 10, padding: "12px 0 0",
-        borderTop: `1px solid ${C.border}`, marginTop: 12,
-      }}>
-        <Input.TextArea
-          ref={inputRef}
-          value={input}
-          onChange={setInput}
-          onKeyDown={handleKeyDown}
-          placeholder={isStreaming ? "助手正在回答中..." : "输入问题，按 Enter 发送..."}
-          disabled={isStreaming}
-          autoSize={{ minRows: 1, maxRows: 4 }}
-          style={{ flex: 1, borderRadius: RADIUS.sm }}
-        />
-        <Button
-          type="primary"
-          icon={<IconSend />}
-          onClick={() => sendMessage()}
-          disabled={!input.trim() || isStreaming}
-          style={{ borderRadius: RADIUS.sm, height: "auto", alignSelf: "flex-end" }}
-        >
-          发送
-        </Button>
       </div>
 
       {/* Blink animation */}

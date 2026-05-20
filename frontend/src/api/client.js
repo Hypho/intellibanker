@@ -90,4 +90,21 @@ export const api = {
       });
     return controller;
   },
+
+  // Chat session persistence
+  saveChatSession: (role, messages, title, sessionId) =>
+    request("/agent/chat/save", {
+      method: "POST",
+      body: JSON.stringify({ role, messages, title, session_id: sessionId }),
+    }),
+  listChatSessions: (role) =>
+    request(`/agent/chat/sessions?role=${role}`),
+  loadChatSession: (sessionId) =>
+    request(`/agent/chat/sessions/${sessionId}`),
+  deleteChatSession: (sessionId) =>
+    request(`/agent/chat/sessions/${sessionId}`, { method: "DELETE" }),
+
+  // Operation logs
+  getLogs: (role, limit = 50) =>
+    request(`/logs?role=${role || ""}&limit=${limit}`),
 };

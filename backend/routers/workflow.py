@@ -7,6 +7,7 @@ import uuid
 
 from backend.data.mock_data import get_customer, get_personal_customers
 from backend.config import call_deepseek
+from backend.data.db import save_visit_record, update_visit_record, get_visit_records
 
 router = APIRouter(prefix="/api/workflow", tags=["workflow"])
 
@@ -47,6 +48,7 @@ async def visit_before(req: VisitRequest) -> dict:
 
     events = customer.get("events", [])
     visit_suggestions = _generate_suggestions(req.customer_type, customer, events)
+    products = _recommend_products(req.customer_type, customer)
 
     _visit_sessions[task_id] = {
         "task_id": task_id,
@@ -59,15 +61,21 @@ async def visit_before(req: VisitRequest) -> dict:
         "events": events,
     }
 
+    save_visit_record(
+        task_id=task_id, customer_id=req.customer_id, customer_type=req.customer_type,
+        manager_id=req.manager_id, stage="before",
+        data={"profile_summary": profile_summary},
+    )
+
     return {
         "stage": "before",
         "task_id": task_id,
         "customer_id": req.customer_id,
-        "customer_name": customer.get("basic_info", {}).get("name") if customer.get("basic_info") else customer.get("basic_info", {}).get("name", ""),
+        "customer_name": customer.get("basic_info", {}).get("name") if customer.get("basic_info") else "",
         "profile_summary": profile_summary,
         "events": events,
         "visit_suggestions": visit_suggestions,
-        "recommended_products": _recommend_products(req.customer_type, customer),
+        "recommended_products": products,
     }
 
 
@@ -78,6 +86,8 @@ async def visit_during(req: VisitRequest) -> dict:
     location = req.data.get("location", "")
 
     started_at = session.get("started_at", datetime.now().isoformat())
+
+    update_visit_record(task_id, stage="during", data={"notes": notes, "location": location})
 
     return {
         "stage": "during",
@@ -116,6 +126,13 @@ async def visit_after(req: VisitRequest) -> dict:
         "tags_updated": tags_updated,
         "completed_at": datetime.now().isoformat(),
     }
+
+    update_visit_record(
+        task_id, stage="after",
+        summary=auto_summary, tags=tags_updated,
+        follow_up_tasks=follow_up_tasks,
+        data={"needs": needs, "commitments": commitments, "objections": objections},
+    )
 
     return {
         "stage": "after",

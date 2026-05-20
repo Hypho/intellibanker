@@ -27,17 +27,18 @@ export default function EventDashboard({ onNavigateToProfile }) {
     try {
       const res = await api.getInsightReport({ dimension: "all" });
       const evts = [];
+      let idx = 0;
       (res.key_lists?.churn_risk_customers || []).forEach(c => {
-        evts.push({ time: `${8 + Math.floor(Math.random() * 7)}:${String(Math.floor(Math.random() * 60)).padStart(2, "0")}`, type: "流失预警", customer: `${c.name} (${c.id})`, customerId: c.id, priority: "high", status: "待处理", action: "优先触达，了解原因" });
+        evts.push({ id: ++idx, time: `${8 + Math.floor(Math.random() * 7)}:${String(Math.floor(Math.random() * 60)).padStart(2, "0")}`, type: "流失预警", customer: `${c.name} (${c.id})`, customerId: c.id, customerName: c.name, priority: "high", status: "待处理", action: "优先触达，了解原因" });
       });
       (res.key_lists?.product_expiring || []).forEach(c => {
-        evts.push({ time: `${9 + Math.floor(Math.random() * 6)}:${String(Math.floor(Math.random() * 60)).padStart(2, "0")}`, type: "产品到期", customer: `${c.name} (${c.id})`, customerId: c.id, priority: c.days_left <= 7 ? "high" : "medium", status: c.days_left <= 7 ? "待处理" : "已完成", action: `推送续存方案（${c.days_left}天后到期）` });
+        evts.push({ id: ++idx, time: `${9 + Math.floor(Math.random() * 6)}:${String(Math.floor(Math.random() * 60)).padStart(2, "0")}`, type: "产品到期", customer: `${c.name} (${c.id})`, customerId: c.id, customerName: c.name, priority: c.days_left <= 7 ? "high" : "medium", status: c.days_left <= 7 ? "待处理" : "已完成", action: `推送续存方案（${c.days_left}天后到期）` });
       });
       (res.opportunities?.cross_sell_leads || []).slice(0, 5).forEach(c => {
-        evts.push({ time: `${10 + Math.floor(Math.random() * 5)}:${String(Math.floor(Math.random() * 60)).padStart(2, "0")}`, type: "交叉销售", customer: `${c.name} (${c.id})`, customerId: c.id, priority: "medium", status: "待处理", action: c.suggestion });
+        evts.push({ id: ++idx, time: `${10 + Math.floor(Math.random() * 5)}:${String(Math.floor(Math.random() * 60)).padStart(2, "0")}`, type: "交叉销售", customer: `${c.name} (${c.id})`, customerId: c.id, customerName: c.name, priority: "medium", status: "待处理", action: c.suggestion });
       });
       (res.opportunities?.churn_alerts || []).slice(0, 5).forEach(c => {
-        evts.push({ time: `${11 + Math.floor(Math.random() * 4)}:${String(Math.floor(Math.random() * 60)).padStart(2, "0")}`, type: "流失信号", customer: `${c.name} (${c.id})`, customerId: c.id, priority: c.churn_probability > 0.6 ? "high" : "medium", status: "待处理", action: `流失概率${(c.churn_probability * 100).toFixed(0)}%，需干预` });
+        evts.push({ id: ++idx, time: `${11 + Math.floor(Math.random() * 4)}:${String(Math.floor(Math.random() * 60)).padStart(2, "0")}`, type: "流失信号", customer: `${c.name} (${c.id})`, customerId: c.id, customerName: c.name, priority: c.churn_probability > 0.6 ? "high" : "medium", status: "待处理", action: `流失概率${(c.churn_probability * 100).toFixed(0)}%，需干预` });
       });
       setEvents(evts);
     } catch (e) { /* silent */ }
@@ -48,7 +49,7 @@ export default function EventDashboard({ onNavigateToProfile }) {
     { title: "时间", dataIndex: "time", width: 70, render: (v) => <span style={{ fontFamily: "'Georgia', serif", fontSize: 12.5, color: C.textMuted }}>{v}</span> },
     { title: "事件类型", dataIndex: "type", width: 100, render: (v) => <Tag color="arcoblue">{v}</Tag> },
     { title: "客户", dataIndex: "customer", render: (v, r) => (
-      <span onClick={() => onNavigateToProfile && onNavigateToProfile(r.customerId)}
+      <span onClick={() => onNavigateToProfile && onNavigateToProfile(r.customerId, r.customerName)}
         style={{ color: C.info, cursor: "pointer", fontWeight: 500 }}>{v}</span>
     )},
     { title: "优先级", dataIndex: "priority", width: 80, render: (v) => <Tag color={PRIORITY_COLOR[v]}>{v === "high" ? "高" : "中"}</Tag> },
@@ -94,7 +95,7 @@ export default function EventDashboard({ onNavigateToProfile }) {
           <div style={{ display: "flex", justifyContent: "center", padding: 40 }}><Spin /></div>
         ) : (
           <Table columns={columns} data={events} pagination={false} size="small"
-            rowKey={(_, i) => i} style={{ fontSize: 13 }} />
+            rowKey="id" style={{ fontSize: 13 }} />
         )}
       </Section>
     </div>

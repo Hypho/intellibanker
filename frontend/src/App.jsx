@@ -35,8 +35,8 @@ export default function App() {
   const [role, setRole] = useState(null);
   const [profileTarget, setProfileTarget] = useState(null);
 
-  const navigateToProfile = (customerId) => {
-    setProfileTarget({ id: customerId });
+  const navigateToProfile = (customerId, customerName) => {
+    setProfileTarget({ id: customerId, name: customerName || "" });
     setActive("profile");
   };
 

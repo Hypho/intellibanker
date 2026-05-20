@@ -135,7 +135,7 @@ export default function InsightReport({ role, roleConfig, onNavigateToProfile })
 
   // ── Table columns ──
   const nameClick = onNavigateToProfile
-    ? (v, r) => <span onClick={() => onNavigateToProfile(r.id)} style={{ color: C.info, cursor: "pointer", fontWeight: 500 }}>{v}</span>
+    ? (v, r) => <span onClick={() => onNavigateToProfile(r.id, v)} style={{ color: C.info, cursor: "pointer", fontWeight: 500 }}>{v}</span>
     : (v) => v;
 
   const idRender = (v) => <span style={{ fontFamily: FONT_MONO, fontSize: 11.5, color: C.textDim }}>{v}</span>;

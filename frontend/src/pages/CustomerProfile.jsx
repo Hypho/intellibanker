@@ -31,6 +31,7 @@ export default function CustomerProfile({ role, roleConfig, externalTarget, onTa
     if (externalTarget?.id) {
       selectCustomer(externalTarget.id, "personal");
       setTab("personal");
+      if (externalTarget.name) setSearch(externalTarget.name);
       if (onTargetConsumed) onTargetConsumed();
     }
   }, [externalTarget]);

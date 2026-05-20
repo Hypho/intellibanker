@@ -32,6 +32,13 @@ export const api = {
   // 画像详情
   getProfile: (type, id) => request(`/profile/${type}/${id}`),
 
+  // AI内容（异步加载）
+  getAiSummary: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/insight/ai-summary?${qs}`);
+  },
+  getAiNarrative: (type, id) => request(`/profile/${type}/${id}/ai-narrative`),
+
   // 拜访流程
   visitWorkflow: (body) =>
     request("/workflow/visit", { method: "POST", body: JSON.stringify(body) }),

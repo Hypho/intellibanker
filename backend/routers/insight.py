@@ -5,6 +5,7 @@ from typing import Optional
 from datetime import datetime
 
 from backend.data.mock_data import get_personal_customers, get_enterprise_customers, BRANCHES, MANAGERS
+from backend.config import call_deepseek
 
 router = APIRouter(prefix="/api/insight", tags=["insight"])
 
@@ -150,6 +151,26 @@ def _monthly_trends(personal: list) -> dict:
     return {"months": months, "deposit_trend": deposit_trend, "loan_trend": loan_trend}
 
 
+async def _generate_insight_summary(overview: dict, metrics: dict, structure: dict) -> str:
+    """用LLM生成管理层可读的洞察摘要。"""
+    prompt = f"""请根据以下银行经营数据，生成一段简洁的管理层洞察摘要（150字以内）：
+
+客户概况：个人客户{overview['total_customers']}户，企业客户{overview['total_enterprise_customers']}户
+AUM总量：{overview['total_aum']:,}元
+存款余额：{overview['total_deposits']:,}元
+贷款余额：{overview['total_loans']:,}元
+客户结构：高净值{structure['by_asset_level'].get('高净值客户', 0)}户，中端{structure['by_asset_level'].get('中端客户', 0)}户，大众{structure['by_asset_level'].get('大众客户', 0)}户
+流失预警客户：{structure['by_lifecycle'].get('流失预警', 0)}户
+存款流失率：{metrics['deposit_churn_rate']:.1%}
+交叉销售率：{metrics['cross_sell_ratio']:.1f}个/户
+
+要求：突出关键发现和建议行动，语言精炼专业。"""
+    try:
+        return await call_deepseek(prompt, system="你是银行经营分析专家，擅长用数据驱动决策。", temperature=0.6, max_tokens=300)
+    except Exception:
+        return ""
+
+
 @router.get("/report")
 async def get_insight_report(
     dimension: str = "all",
@@ -169,17 +190,47 @@ async def get_insight_report(
     if dimension == "manager" and manager_id:
         personal = [c for c in personal if c["basic_info"]["manager_id"] == manager_id]
 
+    overview = _aggregate_overview(personal, enterprise)
+    structure = _customer_structure(personal)
+    metrics = _business_metrics(personal)
+
     return {
         "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "dimension": dimension,
         "branch_id": branch_id,
         "manager_id": manager_id,
-        "overview": _aggregate_overview(personal, enterprise),
-        "customer_structure": _customer_structure(personal),
-        "business_metrics": _business_metrics(personal),
+        "overview": overview,
+        "customer_structure": structure,
+        "business_metrics": metrics,
         "key_lists": _key_lists(personal),
         "opportunities": _opportunities(personal),
         "monthly_trends": _monthly_trends(personal),
         "branches": [{"id": m["id"], "name": m["branch"]} for m in MANAGERS],
         "managers": [{"id": m["id"], "name": m["name"], "branch": m["branch"]} for m in MANAGERS],
     }
+
+
+@router.get("/ai-summary")
+async def get_ai_summary(
+    dimension: str = "all",
+    branch_id: Optional[str] = None,
+    manager_id: Optional[str] = None,
+):
+    """AI洞察摘要（独立接口，不阻塞主报告加载）。"""
+    personal = get_personal_customers()
+    enterprise = get_enterprise_customers()
+
+    if dimension == "branch" and branch_id:
+        branch_name = next((m["branch"] for m in MANAGERS if m["id"] == branch_id), None)
+        if branch_name:
+            personal = [c for c in personal if c["basic_info"]["branch"] == branch_name]
+
+    if dimension == "manager" and manager_id:
+        personal = [c for c in personal if c["basic_info"]["manager_id"] == manager_id]
+
+    overview = _aggregate_overview(personal, enterprise)
+    structure = _customer_structure(personal)
+    metrics = _business_metrics(personal)
+
+    summary = await _generate_insight_summary(overview, metrics, structure)
+    return {"ai_summary": summary}

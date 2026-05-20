@@ -16,6 +16,7 @@ const STATUS_COLOR = {
 export default function InsightReport({ role, roleConfig, onNavigateToProfile }) {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState(null);
+  const [aiSummary, setAiSummary] = useState("");
   const [branches, setBranches] = useState([]);
   const [managers, setManagers] = useState([]);
   const [dimension, setDimension] = useState(
@@ -41,11 +42,15 @@ export default function InsightReport({ role, roleConfig, onNavigateToProfile })
 
   const fetchReport = async () => {
     setLoading(true);
+    setAiSummary("");
     try {
       const params = { dimension };
       if (dimension === "branch") params.branch_id = branchId;
       if (dimension === "manager") params.manager_id = managerId;
-      setData(await api.getInsightReport(params));
+      const report = await api.getInsightReport(params);
+      setData(report);
+      // 异步加载AI摘要，不阻塞主报告
+      api.getAiSummary(params).then((d) => setAiSummary(d.ai_summary || "")).catch(() => {});
     } catch (e) { Message.error("获取报告失败：" + e.message); }
     finally { setLoading(false); }
   };
@@ -200,6 +205,22 @@ export default function InsightReport({ role, roleConfig, onNavigateToProfile })
 
       {/* Dimension selector */}
       {dimensionSelector}
+
+      {/* AI Summary */}
+      {aiSummary && (
+        <div style={{
+          padding: "16px 20px", marginBottom: 20, borderRadius: RADIUS.md,
+          background: `linear-gradient(135deg, ${C.primary}08, ${C.accent}08)`,
+          border: `1px solid ${C.accent}30`, position: "relative", overflow: "hidden",
+        }}>
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${C.primary}, ${C.accent})` }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: C.accent }}>AI 洞察分析</span>
+            <span style={{ fontSize: 11, color: C.textDim, padding: "2px 8px", borderRadius: 4, background: `${C.accent}15` }}>DeepSeek</span>
+          </div>
+          <div style={{ fontSize: 13.5, color: C.textSec, lineHeight: 1.7 }}>{aiSummary}</div>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <Row gutter={16} style={{ marginBottom: 20 }}>

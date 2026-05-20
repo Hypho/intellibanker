@@ -16,6 +16,7 @@ export default function CustomerProfile({ role, roleConfig, externalTarget, onTa
   const [listData, setListData] = useState({ data: [], total: 0 });
   const [selectedId, setSelectedId] = useState(null);
   const [profileData, setProfileData] = useState(null);
+  const [aiNarrative, setAiNarrative] = useState("");
   const [profileLoading, setProfileLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState(() => {
@@ -65,9 +66,12 @@ export default function CustomerProfile({ role, roleConfig, externalTarget, onTa
     const type = overrideTab || tab;
     setSelectedId(id);
     setProfileLoading(true);
+    setAiNarrative("");
     try {
       const res = await api.getProfile(type, id);
       setProfileData(res);
+      // 异步加载AI叙事，不阻塞主画像
+      api.getAiNarrative(type, id).then((d) => setAiNarrative(d.ai_narrative || "")).catch(() => {});
     } catch (e) {
       Message.error("加载画像失败");
       setProfileData(null);
@@ -229,6 +233,22 @@ export default function CustomerProfile({ role, roleConfig, externalTarget, onTa
             </div>
           </div>
         </div>
+
+        {/* AI Narrative */}
+        {aiNarrative && (
+          <div style={{
+            padding: "14px 18px", marginBottom: 20, borderRadius: RADIUS.md,
+            background: `linear-gradient(135deg, ${C.primary}08, ${C.accent}08)`,
+            border: `1px solid ${C.accent}30`, position: "relative", overflow: "hidden",
+          }}>
+            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, ${C.primary}, ${C.accent})` }} />
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: C.accent }}>AI 画像摘要</span>
+              <span style={{ fontSize: 10, color: C.textDim, padding: "2px 8px", borderRadius: 4, background: `${C.accent}15` }}>DeepSeek</span>
+            </div>
+            <div style={{ fontSize: 13, color: C.textSec, lineHeight: 1.7 }}>{aiNarrative}</div>
+          </div>
+        )}
 
         {/* Quick metrics */}
         <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
@@ -498,6 +518,22 @@ export default function CustomerProfile({ role, roleConfig, externalTarget, onTa
           </div>
         </div>
       </div>
+
+      {/* AI Narrative */}
+      {p.ai_narrative && (
+        <div style={{
+          padding: "14px 18px", marginBottom: 20, borderRadius: RADIUS.md,
+          background: `linear-gradient(135deg, ${C.primary}08, ${C.accent}08)`,
+          border: `1px solid ${C.accent}30`, position: "relative", overflow: "hidden",
+        }}>
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, ${C.primary}, ${C.accent})` }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: C.accent }}>AI 画像摘要</span>
+            <span style={{ fontSize: 10, color: C.textDim, padding: "2px 8px", borderRadius: 4, background: `${C.accent}15` }}>DeepSeek</span>
+          </div>
+          <div style={{ fontSize: 13, color: C.textSec, lineHeight: 1.7 }}>{p.ai_narrative}</div>
+        </div>
+      )}
 
       {/* Quick metrics */}
       <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>

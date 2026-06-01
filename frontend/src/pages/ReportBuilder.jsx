@@ -48,30 +48,17 @@ function FeatureChart({ feature }) {
     return <ReactECharts option={option} style={{ height: 220 }} />;
   }
 
-  if (chart_type === "bar") {
+  if (chart_type === "bar" || chart_type === "histogram") {
     const labels = chart_data?.labels || [];
     const values = chart_data?.values || [];
     if (!labels.length) return <div style={{ color: C.textDim, textAlign: "center", padding: 20 }}>暂无数据</div>;
+    const color = chart_type === "histogram" ? C.accent : C.primary;
     const option = {
       tooltip: { trigger: "axis" },
       grid: { top: 10, right: 12, bottom: 30, left: 60 },
       xAxis: { type: "category", data: labels, axisLabel: { fontSize: 10, rotate: labels.length > 5 ? 30 : 0 } },
       yAxis: { type: "value", axisLabel: { fontSize: 10 } },
-      series: [{ type: "bar", data: values, itemStyle: { color: C.primary, borderRadius: [4, 4, 0, 0] } }],
-    };
-    return <ReactECharts option={option} style={{ height: 220 }} />;
-  }
-
-  if (chart_type === "histogram") {
-    const labels = chart_data?.labels || [];
-    const values = chart_data?.values || [];
-    if (!labels.length) return <div style={{ color: C.textDim, textAlign: "center", padding: 20 }}>暂无数据</div>;
-    const option = {
-      tooltip: { trigger: "axis" },
-      grid: { top: 10, right: 12, bottom: 30, left: 50 },
-      xAxis: { type: "category", data: labels, axisLabel: { fontSize: 10 } },
-      yAxis: { type: "value", axisLabel: { fontSize: 10 } },
-      series: [{ type: "bar", data: values, itemStyle: { color: C.accent, borderRadius: [4, 4, 0, 0] } }],
+      series: [{ type: "bar", data: values, itemStyle: { color, borderRadius: [4, 4, 0, 0] } }],
     };
     return <ReactECharts option={option} style={{ height: 220 }} />;
   }
@@ -142,8 +129,8 @@ export default function ReportBuilder({ role, roleConfig }) {
               const data = JSON.parse(line.slice(6));
               setProgress(data);
               if (data.phase === "complete" && data.report_id) {
-                // Fetch full report via blocking endpoint
-                const reportData = await api.generateReport(selectedTheme, role || "admin", roleConfig?.managerId, roleConfig?.branchId);
+                // Fetch cached report by ID (no re-generation)
+                const reportData = await api.getReport(data.report_id);
                 setReport(reportData);
               }
             } catch { /* skip parse errors */ }

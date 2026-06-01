@@ -120,6 +120,7 @@ export const api = {
         branch_id: branchId || null,
       }),
     }),
+  getReport: (reportId) => request(`/report/${reportId}`),
   exportReportWord: (reportId) =>
     fetch(`${BASE}/report/${reportId}/export/word`, {
       method: "POST",

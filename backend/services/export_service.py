@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Optional
 
 from backend.models.tag_schema import ReportInstance, ExportConfig
+from backend.services.report_generator import _format_chart_value
 
 
 # ── Desensitization ──────────────────────────────────────
@@ -101,7 +102,7 @@ def export_word(report: ReportInstance, config: ExportConfig | None = None) -> b
             run.font.size = Pt(11)
 
             # Feature value
-            val_text = _format_feature_value(feat)
+            val_text = _format_chart_value(feat.chart_data, "、")
             if val_text:
                 doc.add_paragraph(f"指标值：{val_text}")
 
@@ -211,10 +212,13 @@ def export_pdf(report: ReportInstance, config: ExportConfig | None = None) -> by
 
 
 def _render_report_html(report: dict) -> str:
-    """Render report as HTML using Jinja2 template."""
-    from jinja2 import Template
+    """Render report as HTML using cached Jinja2 template."""
+    return _HTML_TEMPLATE.render(report=report)
 
-    template_str = """<!DOCTYPE html>
+
+# ── HTML template (compiled once at import time) ─────────
+
+_HTML_TEMPLATE_STR = """<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
@@ -328,8 +332,8 @@ def _render_report_html(report: dict) -> str:
 <div class="footer">— 报告生成于 {{ report.generated_at }} · IntelliBanker 智能营销平台 —</div>
 </body></html>"""
 
-    template = Template(template_str)
-    return template.render(report=report)
+from jinja2 import Template as _JinjaTemplate
+_HTML_TEMPLATE = _JinjaTemplate(_HTML_TEMPLATE_STR)
 
 
 # ── Helpers ──────────────────────────────────────────────
@@ -355,17 +359,3 @@ def _dict_to_str(d: dict, top_n: int = 0) -> str:
     if top_n > 0:
         items = items[:top_n]
     return "、".join(f"{k}({v})" for k, v in items)
-
-
-def _format_feature_value(feat) -> str:
-    """Format feature chart_data as a readable string."""
-    d = feat.chart_data
-    if "value" in d:
-        v = d["value"]
-        if isinstance(v, float):
-            return f"{v:,.1f}"
-        return str(v)
-    if "labels" in d and "values" in d:
-        pairs = list(zip(d["labels"], d["values"]))[:5]
-        return "、".join(f"{l}={v}" for l, v in pairs)
-    return ""

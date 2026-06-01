@@ -106,22 +106,13 @@ async def generate_report_stream(
                 yield f"data: {json.dumps({'phase': 'error', 'message': f'主题 {theme_id} 不存在'}, ensure_ascii=False)}\n\n"
                 return
 
-            from backend.data.mock_data import get_personal_customers, MANAGERS
-            from backend.services.segment_engine import segment_customers
+            yield f"data: {json.dumps({'phase': 'feature', 'message': '正在分析标签特征与关联...', 'percent': 30}, ensure_ascii=False)}\n\n"
 
-            all_customers = _filter_by_role(get_personal_customers(), manager_id, branch_id)
-            seg = segment_customers(theme, all_customers)
-            if not seg:
-                yield f"data: {json.dumps({'phase': 'error', 'message': '未筛选到符合条件的客户'}, ensure_ascii=False)}\n\n"
-                return
+            # generate_report handles role filtering internally
+            report = await generate_report(theme_id, user, manager_id=manager_id, branch_id=branch_id)
 
-            yield f"data: {json.dumps({'phase': 'segment', 'message': f'筛选到 {len(seg)} 位客户', 'percent': 20}, ensure_ascii=False)}\n\n"
-            yield f"data: {json.dumps({'phase': 'feature', 'message': '正在分析标签特征...', 'percent': 30}, ensure_ascii=False)}\n\n"
-
-            report = await generate_report(
-                theme_id, user,
-                manager_id=manager_id, branch_id=branch_id,
-            )
+            if report.status == "completed":
+                _report_cache[report.id] = report
 
             yield f"data: {json.dumps({'phase': 'complete', 'message': '报告生成完成', 'percent': 100, 'report_id': report.id}, ensure_ascii=False)}\n\n"
 
@@ -133,18 +124,6 @@ async def generate_report_stream(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
-
-
-def _filter_by_role(customers: list, manager_id: str | None, branch_id: str | None) -> list:
-    """Filter customers by role scope."""
-    if manager_id:
-        return [c for c in customers if c.get("basic_info", {}).get("manager_id") == manager_id]
-    if branch_id:
-        from backend.data.mock_data import MANAGERS
-        branch_name = next((m["branch"] for m in MANAGERS if m["id"] == branch_id), None)
-        if branch_name:
-            return [c for c in customers if c.get("basic_info", {}).get("branch") == branch_name]
-    return customers
 
 
 # ── Report instance endpoints ────────────────────────────

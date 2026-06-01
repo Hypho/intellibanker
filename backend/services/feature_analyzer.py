@@ -172,15 +172,9 @@ def _aggregate(seg_values: list, all_values: list, feature: TagFeature) -> tuple
         val = mean(ratios) if ratios else 0
         return {"value": round(val, 2)}, {"mean": round(val, 2), "count": len(ratios)}
 
-    if agg == "mom_change":
-        # Month-over-month change from aum_history
-        changes = _calc_aum_changes(seg_values, mode="mom")
-        val = mean(changes) if changes else 0
-        return {"value": round(val * 100, 2), "benchmark": 0}, \
-               {"mean": round(val * 100, 2), "count": len(changes)}
-
-    if agg == "yoy_change":
-        changes = _calc_aum_changes(seg_values, mode="yoy")
+    if agg in ("mom_change", "yoy_change"):
+        mode = "mom" if agg == "mom_change" else "yoy"
+        changes = _calc_aum_changes(seg_values, mode=mode)
         val = mean(changes) if changes else 0
         return {"value": round(val * 100, 2), "benchmark": 0}, \
                {"mean": round(val * 100, 2), "count": len(changes)}

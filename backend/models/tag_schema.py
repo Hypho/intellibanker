@@ -76,6 +76,7 @@ class FeatureGroup(BaseModel):
     group_name: str
     features: list[FeatureResult] = []
     top5_features: list[FeatureResult] = []
+    group_summary: str = ""  # LLM-generated group-level analysis paragraph
 
 
 class CorrelationRule(BaseModel):
@@ -137,6 +138,7 @@ class ReportInstance(BaseModel):
     message: str = ""
 
     overview: Optional[ReportOverview] = None
+    executive_summary: str = ""  # LLM-generated overall summary paragraph
     feature_analysis: list[FeatureGroup] = []
     correlation_insights: list[CorrelationRule] = []
     recommendations: Optional[ReportRecommendations] = None

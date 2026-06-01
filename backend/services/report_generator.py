@@ -59,6 +59,12 @@ async def generate_report(
     correlation_task = _analyze_correlations(seg)
     feature_groups, correlations = await asyncio.gather(feature_task, correlation_task)
 
+    # Phase ④.5: Generate group-level summaries + executive summary (parallel)
+    summary_tasks = [_generate_group_summary(g, theme, len(seg)) for g in feature_groups]
+    exec_task = _generate_executive_summary(theme, seg, feature_groups, correlations)
+    summaries = await asyncio.gather(*summary_tasks, exec_task)
+    executive_summary = summaries[-1]
+
     # Phase ⑤ Marketing recommendations (with fallback)
     recommendations = await _generate_recommendations(theme, seg, feature_groups, correlations)
 
@@ -73,6 +79,7 @@ async def generate_report(
         customer_count=len(seg),
         status="completed",
         overview=overview,
+        executive_summary=executive_summary,
         feature_analysis=feature_groups,
         correlation_insights=correlations,
         recommendations=recommendations,
@@ -90,19 +97,83 @@ async def _analyze_features(
     groups = analyze_all_features(theme, seg, all_customers)
     all_features = get_all_features()
 
-    # Generate LLM insights for Top5 features (parallel, with fallback)
+    # Generate LLM insights for Top5 features (batched to avoid rate limiting)
     tasks = []
     for g in groups:
         for f in g.features:
-            if f.is_top5:
-                feat_def = all_features.get(f.feature_id)
-                if feat_def:
-                    tasks.append(_generate_feature_insight(f, feat_def, theme, g.group_name, len(seg)))
+            feat_def = all_features.get(f.feature_id)
+            if feat_def and f.is_top5:
+                tasks.append(_generate_feature_insight(f, feat_def, theme, g.group_name, len(seg)))
+            elif feat_def and not f.llm_insight:
+                # Non-Top5 features: use business_hint as insight
+                f.llm_insight = feat_def.business_hint
 
     if tasks:
-        await asyncio.gather(*tasks)
+        # Batch LLM calls to avoid rate limiting (max 5 concurrent)
+        for i in range(0, len(tasks), 5):
+            await asyncio.gather(*tasks[i:i+5])
 
     return groups
+
+
+async def _generate_group_summary(group: FeatureGroup, theme: TagTheme, customer_count: int) -> None:
+    """Generate a group-level analysis paragraph summarizing all features in the group."""
+    feature_summaries = []
+    for f in group.features:
+        val = _format_chart_value(f.chart_data)
+        feature_summaries.append(f"- {f.feature_name}: {val}")
+    features_text = "\n".join(feature_summaries)
+
+    prompt = f"""请根据以下{theme.name}客群（{customer_count}人）的「{group.group_name}」分析数据，撰写一段150字左右的综合分析摘要。
+
+分析指标：
+{features_text}
+
+要求：
+1. 综合概括该维度的整体特征，不要逐个罗列指标
+2. 突出与客群价值相关的关键发现
+3. 用专业银行分析语言，体现数据驱动的洞察
+4. 结尾给出该维度的经营建议（1-2句）"""
+
+    group.group_summary = await _llm_insight(
+        prompt, max_tokens=300,
+        fallback=f"该客群在{group.group_name}维度呈现以下特征：{features_text[:100]}...",
+    )
+
+
+async def _generate_executive_summary(
+    theme: TagTheme, seg: list[dict],
+    groups: list[FeatureGroup], correlations: list[CorrelationRule],
+) -> str:
+    """Generate an executive summary paragraph for the entire report."""
+    # Collect key findings
+    top_findings = []
+    for g in groups:
+        for f in g.features:
+            if f.is_top5 and f.llm_insight:
+                top_findings.append(f"{f.feature_name}: {f.llm_insight[:40]}")
+
+    corr_findings = [r.llm_insight[:40] for r in correlations if r.llm_insight][:3]
+    findings_text = "\n".join(f"- {f}" for f in top_findings[:6] + corr_findings)
+
+    prompt = f"""请为{theme.name}客群画像分析报告撰写一段200字左右的执行摘要（报告开头的概述段落）。
+
+客群：{theme.name}（{len(seg)}人）
+主题描述：{theme.description}
+
+关键发现：
+{findings_text}
+
+要求：
+1. 开头说明客群规模和核心特征
+2. 中间概括2-3个最重要的发现
+3. 结尾给出整体经营策略建议
+4. 语言精炼专业，适合管理层阅读"""
+
+    return await _llm_insight(
+        prompt, max_tokens=400,
+        fallback=f"{theme.name}客群共{len(seg)}人，本报告从多个维度对其画像特征进行了全面分析，旨在为精准营销提供数据支撑。",
+    )
 
 
 async def _generate_feature_insight(
@@ -138,10 +209,10 @@ async def _analyze_correlations(seg: list[dict]) -> list[CorrelationRule]:
     """Discover correlations and generate LLM insights."""
     rules = discover_correlations(seg)
 
-    # Generate LLM insights for each rule (parallel, with fallback)
+    # Generate LLM insights for each rule (batched to avoid rate limiting)
     tasks = [_generate_correlation_insight(r) for r in rules]
-    if tasks:
-        await asyncio.gather(*tasks)
+    for i in range(0, len(tasks), 3):
+        await asyncio.gather(*tasks[i:i+3])
 
     return rules
 
@@ -264,14 +335,18 @@ async def _generate_recommendations(
 # ── Helpers ──────────────────────────────────────────────
 
 async def _llm_insight(prompt: str, max_tokens: int = 150, fallback: str = "") -> str:
-    """Unified LLM call with system role and exception fallback."""
-    try:
-        result = await call_deepseek(
-            prompt, system="你是银行数据分析专家。", max_tokens=max_tokens, temperature=0.5,
-        )
-        return result.strip()
-    except Exception:
-        return fallback
+    """Unified LLM call with system role, retry, and empty fallback."""
+    for attempt in range(2):
+        try:
+            result = await call_deepseek(
+                prompt, system="你是银行数据分析专家。", max_tokens=max_tokens, temperature=0.5,
+            )
+            text = result.strip()
+            if text:
+                return text
+        except Exception:
+            pass
+    return fallback
 
 
 def _format_chart_value(chart_data: dict, separator: str = ", ") -> str:

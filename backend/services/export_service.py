@@ -69,6 +69,14 @@ def export_word(report: ReportInstance, config: ExportConfig | None = None) -> b
         ("客群人数", str(report.customer_count)),
     ])
 
+    # ── Executive Summary ──
+    if report.executive_summary:
+        doc.add_heading("执行摘要", level=1)
+        p = doc.add_paragraph(report.executive_summary)
+        p.paragraph_format.space_after = Pt(12)
+        # Add a visual separator
+        doc.add_paragraph("─" * 60)
+
     # ── Chapter 2: Overview ──
     doc.add_heading("一、客群基础概览", level=1)
     if report.overview:
@@ -93,6 +101,11 @@ def export_word(report: ReportInstance, config: ExportConfig | None = None) -> b
     doc.add_heading("二、标签特征分析", level=1)
     for group in (report.feature_analysis or []):
         doc.add_heading(group.group_name, level=2)
+
+        # Group-level summary
+        if group.group_summary:
+            p = doc.add_paragraph(group.group_summary)
+            p.paragraph_format.space_after = Pt(8)
 
         for feat in group.features:
             # Feature name + top5 badge

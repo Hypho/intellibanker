@@ -314,9 +314,32 @@ export default function ReportBuilder({ role, roleConfig }) {
             </Section>
           )}
 
+          {/* Executive Summary */}
+          {report.executive_summary && (
+            <div style={{
+              padding: "20px 24px", marginBottom: 20, borderRadius: RADIUS.md,
+              background: "linear-gradient(135deg, #f8fafc, #f0f4ff)",
+              border: "1px solid #e0e7ff", borderLeft: "4px solid #c9a84c",
+            }}>
+              <div style={{ fontSize: 12, color: "#c9a84c", fontWeight: 600, letterSpacing: 2, marginBottom: 8 }}>执行摘要</div>
+              <div style={{ fontSize: 14, color: "#374151", lineHeight: 1.9, textAlign: "justify" }}>{report.executive_summary}</div>
+            </div>
+          )}
+
           {/* Chapter 3: Feature Analysis */}
-          {(report.feature_analysis || []).map((group) => (
-            <Section key={group.group_id} title={`二、${group.group_name}`} icon={<IconStar />}>
+          {(report.feature_analysis || []).map((group, gi) => (
+            <Section key={group.group_id} title={`${["二","三","四","五","六","七","八","九","十"][gi] || gi + 2}、${group.group_name}`} icon={<IconStar />}>
+              {/* Group summary */}
+              {group.group_summary && (
+                <div style={{
+                  padding: "14px 18px", marginBottom: 16, borderRadius: RADIUS.sm,
+                  background: "linear-gradient(135deg, #f0f4ff, #f8fafc)",
+                  border: "1px solid #dbeafe", fontSize: 13.5, color: "#1e3a5f", lineHeight: 1.9,
+                }}>
+                  {group.group_summary}
+                </div>
+              )}
+
               {/* Top5 badge */}
               {group.top5_features?.length > 0 && (
                 <div style={{ marginBottom: 12, display: "flex", gap: 6, alignItems: "center" }}>

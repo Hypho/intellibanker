@@ -79,14 +79,13 @@ def _extract_values(customers: list[dict], source_field: str) -> list[Any]:
     """Extract raw values from customers, handling nested fields and arrays."""
     values = []
     for c in customers:
-        if source_field.endswith("[]"):
+        if "[]." in source_field:
             # Array field: "products[].type" → extract type from each product
-            base = source_field[:-2]  # "products"
-            sub_field = source_field.split("[].")[1] if "[]." in source_field else None
+            base, sub_field = source_field.split("[].", 1)
             arr = _get_nested_field(c, base)
             if isinstance(arr, list):
                 for item in arr:
-                    if sub_field and isinstance(item, dict):
+                    if isinstance(item, dict):
                         values.append(item.get(sub_field))
                     else:
                         values.append(item)

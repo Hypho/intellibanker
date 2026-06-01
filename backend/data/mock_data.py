@@ -23,6 +23,35 @@ RISK_PREFERENCES = ["保守型", "稳健型", "积极型"]
 LIFECYCLES = ["新客户", "成熟期", "衰退期", "流失预警"]
 ASSET_LEVELS = ["大众客户", "成长型客户", "中端客户", "高净值客户"]
 
+EDUCATIONS = ["高中", "大专", "本科", "硕士", "博士"]
+MARITAL_STATUSES = ["未婚", "已婚", "离异", "丧偶"]
+PROVINCES = ["北京市", "上海市", "广东省", "浙江省", "江苏省", "四川省", "湖北省", "山东省", "福建省", "天津市"]
+DISTRICTS_BY_PROVINCE = {
+    "北京市": ["东城区", "西城区", "朝阳区", "海淀区", "丰台区", "通州区"],
+    "上海市": ["黄浦区", "浦东新区", "静安区", "徐汇区", "长宁区", "虹口区"],
+    "广东省": ["天河区", "越秀区", "南山区", "福田区", "罗湖区", "白云区"],
+    "浙江省": ["上城区", "西湖区", "滨江区", "拱墅区", "余杭区", "萧山区"],
+    "江苏省": ["鼓楼区", "玄武区", "秦淮区", "建邺区", "栖霞区", "雨花台区"],
+    "四川省": ["锦江区", "青羊区", "武侯区", "成华区", "金牛区", "高新区"],
+    "湖北省": ["江岸区", "江汉区", "武昌区", "洪山区", "汉阳区", "青山区"],
+    "山东省": ["历下区", "市中区", "槐荫区", "天桥区", "历城区", "长清区"],
+    "福建省": ["鼓楼区", "台江区", "仓山区", "晋安区", "马尾区", "长乐区"],
+    "天津市": ["和平区", "河东区", "河西区", "南开区", "河北区", "红桥区"],
+}
+COMMUNITIES = [
+    "和平里社区", "望京社区", "天通苑社区", "回龙观社区", "亚运村社区",
+    "陆家嘴社区", "徐家汇社区", "五角场社区", "古北社区", "联洋社区",
+    "珠江新城社区", "天河北社区", "东风社区", "华阳社区", "春熙路社区",
+    "武林社区", "湖滨社区", "翠苑社区", "文新社区", "西溪社区",
+]
+BUSINESS_DISTRICTS = [
+    "王府井商圈", "国贸商圈", "中关村商圈", "西单商圈", "金融街商圈",
+    "陆家嘴商圈", "南京路商圈", "淮海路商圈", "徐家汇商圈", "虹桥商圈",
+    "珠江新城商圈", "天河城商圈", "北京路商圈", "环市东商圈", "体育中心商圈",
+    "春熙路商圈", "盐市口商圈", "建设路商圈", "万达商圈", "太古里商圈",
+]
+COMMUNITY_PRODUCTS = ["社区理财A", "社区定期B", "社区保险C", "社区基金D", "社区贷E"]
+
 # ── 真实姓名库 ──────────────────────────────────────
 PERSONAL_NAMES = [
     "张伟", "王芳", "李强", "赵敏", "刘洋", "陈静", "杨军", "黄丽",
@@ -207,6 +236,68 @@ def generate_personal_customers(n: int = 100) -> List[Dict[str, Any]]:
                 "response": random.choice(["有意向", "无意向", "待考虑", "未响应"]),
             })
 
+        # ── 新增：人口统计 ──
+        gender = random.choice(["男", "女"])
+        birth_year = random.randint(1960, 2002)
+        birth_month = random.randint(1, 12)
+        birth_day = random.randint(1, 28)
+        birth_date = f"{birth_year}-{birth_month:02d}-{birth_day:02d}"
+        age = 2026 - birth_year
+
+        # 学历与年龄相关：年轻客群学历偏高
+        if age < 30:
+            education = random.choices(EDUCATIONS, weights=[2, 10, 40, 35, 13], k=1)[0]
+        elif age < 50:
+            education = random.choices(EDUCATIONS, weights=[5, 20, 45, 25, 5], k=1)[0]
+        else:
+            education = random.choices(EDUCATIONS, weights=[15, 30, 35, 15, 5], k=1)[0]
+
+        # 婚姻与年龄相关
+        if age < 28:
+            marital_status = random.choices(MARITAL_STATUSES, weights=[70, 25, 5, 0], k=1)[0]
+        elif age < 45:
+            marital_status = random.choices(MARITAL_STATUSES, weights=[15, 70, 12, 3], k=1)[0]
+        else:
+            marital_status = random.choices(MARITAL_STATUSES, weights=[5, 70, 15, 10], k=1)[0]
+
+        household_size = random.choices([1, 2, 3, 4, 5], weights=[10, 20, 40, 20, 10], k=1)[0]
+        province = random.choice(PROVINCES)
+        district = random.choice(DISTRICTS_BY_PROVINCE.get(province, ["城区"]))
+
+        # ── 新增：AUM历史（6个月随机游走）──
+        aum_history = {}
+        hist_val = int(aum * random.uniform(0.85, 0.95))  # 6个月前约为当前的85-95%
+        for m_idx, month in enumerate(["2025-12", "2026-01", "2026-02", "2026-03", "2026-04", "2026-05"]):
+            if m_idx < 5:
+                hist_val = int(hist_val * random.uniform(0.97, 1.05))
+            else:
+                hist_val = aum  # 最后一个月对齐当前AUM
+            aum_history[month] = hist_val
+
+        # ── 新增：交易行为 ──
+        transfer_frequency = random.choice(["低", "中", "高"])
+        activity_base = {"高": 20, "中": 10, "低": 4}[transfer_frequency]
+        monthly_transaction_count = max(1, activity_base + random.randint(-5, 10))
+        large_transaction_ratio = round(random.uniform(0, 0.3) if aum < 300000 else random.uniform(0.05, 0.4), 2)
+        last_transaction_days = random.randint(0, 30) if lifecycle in ("新客户", "成熟期") else random.randint(3, 90)
+
+        # ── 新增：代发工资 ──
+        salary_account = random.random() < 0.4
+        if salary_account:
+            monthly_salary = random.choice([3000, 5000, 8000, 12000, 18000, 25000, 35000, 50000])
+            # 高净值客群工资更高
+            if asset_level in ("中端客户", "高净值客户"):
+                monthly_salary = random.choice([15000, 25000, 35000, 50000, 80000])
+        else:
+            monthly_salary = 0
+
+        # ── 新增：社区信息 ──
+        community = random.choice(COMMUNITIES)
+        business_district = random.choice(BUSINESS_DISTRICTS)
+        community_products = random.sample(
+            COMMUNITY_PRODUCTS, k=random.randint(0, min(3, len(COMMUNITY_PRODUCTS)))
+        )
+
         customers.append({
             "id": cid,
             "basic_info": {
@@ -218,7 +309,15 @@ def generate_personal_customers(n: int = 100) -> List[Dict[str, Any]]:
                 "manager_name": manager["name"],
                 "account_open_date": _rand_date(2016, 2023),
             },
+            "gender": gender,
+            "birth_date": birth_date,
+            "education": education,
+            "marital_status": marital_status,
+            "household_size": household_size,
+            "province": province,
+            "district": district,
             "aum": aum,
+            "aum_history": aum_history,
             "asset_level": asset_level,
             "lifecycle": lifecycle,
             "products": products,
@@ -238,10 +337,18 @@ def generate_personal_customers(n: int = 100) -> List[Dict[str, Any]]:
             "financial_behavior": {
                 "monthly_flow_trend": monthly_flow,
                 "activity_scores_6m": months_active,
-                "transfer_frequency": random.choice(["低", "中", "高"]),
+                "transfer_frequency": transfer_frequency,
                 "channel_preference": random.choice(["手机银行", "网上银行", "网点", "混合"]),
                 "app_login_days_30": random.randint(0, 30),
             },
+            "monthly_transaction_count": monthly_transaction_count,
+            "large_transaction_ratio": large_transaction_ratio,
+            "last_transaction_days": last_transaction_days,
+            "salary_account": salary_account,
+            "monthly_salary": monthly_salary,
+            "community": community,
+            "business_district": business_district,
+            "community_products": community_products,
             "tags": {
                 "lifecycle": lifecycle,
                 "risk_preference": risk_pref,

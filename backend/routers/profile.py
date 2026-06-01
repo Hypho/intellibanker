@@ -2,12 +2,23 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, date
 
 from backend.data.mock_data import get_customer
 from backend.config import call_deepseek
 
 router = APIRouter(prefix="/api/profile", tags=["profile"])
+
+
+def _calc_age(birth_date_str: str, today: date) -> int:
+    """Compute age from birth_date string."""
+    if not birth_date_str:
+        return 0
+    try:
+        bd = datetime.strptime(birth_date_str, "%Y-%m-%d").date()
+        return today.year - bd.year - ((today.month, today.day) < (bd.month, bd.day))
+    except ValueError:
+        return 0
 
 
 @router.get("/list/personal")
@@ -22,6 +33,7 @@ async def list_personal_profiles(
     from backend.data.mock_data import get_personal_customers
 
     customers = get_personal_customers()
+    today = date.today()
 
     if search:
         s = search.lower()
@@ -47,6 +59,8 @@ async def list_personal_profiles(
             {
                 "id": c["id"],
                 "name": c["basic_info"]["name"],
+                "gender": c.get("gender", ""),
+                "age": _calc_age(c.get("birth_date", ""), today),
                 "asset_level": c["asset_level"],
                 "lifecycle": c["lifecycle"],
                 "aum": c["aum"],

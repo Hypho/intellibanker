@@ -1,12 +1,16 @@
 """FastAPI main entry."""
+import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
+import sqlite3
 
 from backend.routers import insight, profile, workflow, agent
-from backend.data.db import init_db, log_operation
+from backend.data.db import init_db, get_conn, log_operation, get_operation_logs
 # flake8: noqa
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -31,25 +35,43 @@ app.add_middleware(
 )
 
 
-class OperationLogMiddleware(BaseHTTPMiddleware):
-    """Log non-GET API calls to SQLite."""
+# ── DB dependency ──────────────────────────────────────
 
-    _SKIP = {"/health", "/docs", "/openapi.json", "/favicon.ico"}
+def get_db():
+    """Per-request SQLite connection, closed after response."""
+    conn = get_conn()
+    try:
+        yield conn
+    finally:
+        conn.close()
+
+
+# Make get_db available as a dependency for routers
+app.state.get_db = get_db
+
+
+# ── Audit middleware ───────────────────────────────────
+
+class OperationLogMiddleware(BaseHTTPMiddleware):
+    """Log POST API calls to SQLite with business context."""
 
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
-        path = request.url.path
-        if request.method == "POST" and path.startswith("/api/") and path not in self._SKIP:
+        if request.method == "POST" and request.url.path.startswith("/api/"):
+            conn = get_conn()
             try:
                 role = request.headers.get("X-Role", "")
                 log_operation(
-                    action=f"{request.method} {path}",
-                    target=path,
+                    conn,
+                    action=f"{request.method} {request.url.path}",
+                    target=request.url.path,
                     role=role,
-                    detail=f"status={response.status_code}",
+                    detail=f"role={role}, status={response.status_code}",
                 )
             except Exception:
-                pass
+                logger.exception("Failed to write operation log")
+            finally:
+                conn.close()
         return response
 
 
@@ -69,8 +91,11 @@ async def health():
 @app.get("/api/logs")
 async def get_logs(role: str = "", limit: int = 100):
     """Get operation logs."""
-    from backend.data.db import get_operation_logs
-    return {"logs": get_operation_logs(role or None, limit)}
+    conn = get_conn()
+    try:
+        return {"logs": get_operation_logs(conn, role or None, limit)}
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":

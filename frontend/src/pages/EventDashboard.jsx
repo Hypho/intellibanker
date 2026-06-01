@@ -27,19 +27,40 @@ export default function EventDashboard({ onNavigateToProfile }) {
     try {
       const res = await api.getInsightReport({ dimension: "all" });
       const evts = [];
-      let idx = 0;
-      (res.key_lists?.churn_risk_customers || []).forEach(c => {
-        evts.push({ id: ++idx, time: `${8 + Math.floor(Math.random() * 7)}:${String(Math.floor(Math.random() * 60)).padStart(2, "0")}`, type: "流失预警", customer: `${c.name} (${c.id})`, customerId: c.id, customerName: c.name, priority: "high", status: "待处理", action: "优先触达，了解原因" });
-      });
-      (res.key_lists?.product_expiring || []).forEach(c => {
-        evts.push({ id: ++idx, time: `${9 + Math.floor(Math.random() * 6)}:${String(Math.floor(Math.random() * 60)).padStart(2, "0")}`, type: "产品到期", customer: `${c.name} (${c.id})`, customerId: c.id, customerName: c.name, priority: c.days_left <= 7 ? "high" : "medium", status: c.days_left <= 7 ? "待处理" : "已完成", action: `推送续存方案（${c.days_left}天后到期）` });
-      });
-      (res.opportunities?.cross_sell_leads || []).slice(0, 5).forEach(c => {
-        evts.push({ id: ++idx, time: `${10 + Math.floor(Math.random() * 5)}:${String(Math.floor(Math.random() * 60)).padStart(2, "0")}`, type: "交叉销售", customer: `${c.name} (${c.id})`, customerId: c.id, customerName: c.name, priority: "medium", status: "待处理", action: c.suggestion });
-      });
-      (res.opportunities?.churn_alerts || []).slice(0, 5).forEach(c => {
-        evts.push({ id: ++idx, time: `${11 + Math.floor(Math.random() * 4)}:${String(Math.floor(Math.random() * 60)).padStart(2, "0")}`, type: "流失信号", customer: `${c.name} (${c.id})`, customerId: c.id, customerName: c.name, priority: c.churn_probability > 0.6 ? "high" : "medium", status: "待处理", action: `流失概率${(c.churn_probability * 100).toFixed(0)}%，需干预` });
-      });
+
+      const pushEvent = (c, type, baseHour, overrides = {}) => {
+        evts.push({
+          id: evts.length + 1,
+          time: `${baseHour + Math.floor(Math.random() * (18 - baseHour))}:${String(Math.floor(Math.random() * 60)).padStart(2, "0")}`,
+          type,
+          customer: `${c.name} (${c.id})`,
+          customerId: c.id,
+          customerName: c.name,
+          priority: "medium",
+          status: "待处理",
+          ...overrides,
+        });
+      };
+
+      (res.key_lists?.churn_risk_customers || []).forEach(c =>
+        pushEvent(c, "流失预警", 8, { priority: "high", action: "优先触达，了解原因" })
+      );
+      (res.key_lists?.product_expiring || []).forEach(c =>
+        pushEvent(c, "产品到期", 9, {
+          priority: c.days_left <= 7 ? "high" : "medium",
+          status: c.days_left <= 7 ? "待处理" : "已完成",
+          action: `推送续存方案（${c.days_left}天后到期）`,
+        })
+      );
+      (res.opportunities?.cross_sell_leads || []).slice(0, 5).forEach(c =>
+        pushEvent(c, "交叉销售", 10, { action: c.suggestion })
+      );
+      (res.opportunities?.churn_alerts || []).slice(0, 5).forEach(c =>
+        pushEvent(c, "流失信号", 11, {
+          priority: c.churn_probability > 0.6 ? "high" : "medium",
+          action: `流失概率${(c.churn_probability * 100).toFixed(0)}%，需干预`,
+        })
+      );
       setEvents(evts);
     } catch (e) { /* silent */ }
     finally { setLoading(false); }

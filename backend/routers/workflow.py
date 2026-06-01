@@ -7,7 +7,7 @@ import uuid
 
 from backend.data.mock_data import get_customer, get_personal_customers
 from backend.config import call_deepseek
-from backend.data.db import save_visit_record, update_visit_record, get_visit_records
+from backend.data.db import get_conn, save_visit_record, update_visit_record, get_visit_record, get_visit_records
 
 router = APIRouter(prefix="/api/workflow", tags=["workflow"])
 
@@ -18,10 +18,6 @@ class VisitRequest(BaseModel):
     manager_id: Optional[str] = None
     stage: str  # "before" | "during" | "after"
     data: dict = {}
-
-
-# ── In-memory visit session store ──────────────────────
-_visit_sessions: dict[str, dict] = {}
 
 
 # ── /visit (main workflow endpoint) ──────────────────
@@ -50,22 +46,16 @@ async def visit_before(req: VisitRequest) -> dict:
     visit_suggestions = _generate_suggestions(req.customer_type, customer, events)
     products = _recommend_products(req.customer_type, customer)
 
-    _visit_sessions[task_id] = {
-        "task_id": task_id,
-        "customer_id": req.customer_id,
-        "customer_type": req.customer_type,
-        "manager_id": req.manager_id,
-        "stage": "before",
-        "started_at": datetime.now().isoformat(),
-        "profile_summary": profile_summary,
-        "events": events,
-    }
-
-    save_visit_record(
-        task_id=task_id, customer_id=req.customer_id, customer_type=req.customer_type,
-        manager_id=req.manager_id, stage="before",
-        data={"profile_summary": profile_summary},
-    )
+    conn = get_conn()
+    try:
+        save_visit_record(
+            conn,
+            task_id=task_id, customer_id=req.customer_id, customer_type=req.customer_type,
+            manager_id=req.manager_id, stage="before",
+            data={"profile_summary": profile_summary, "started_at": datetime.now().isoformat()},
+        )
+    finally:
+        conn.close()
 
     return {
         "stage": "before",
@@ -81,13 +71,16 @@ async def visit_before(req: VisitRequest) -> dict:
 
 async def visit_during(req: VisitRequest) -> dict:
     task_id = req.data.get("task_id", "")
-    session = _visit_sessions.get(task_id, {})
     notes = req.data.get("notes", "")
     location = req.data.get("location", "")
 
-    started_at = session.get("started_at", datetime.now().isoformat())
-
-    update_visit_record(task_id, stage="during", data={"notes": notes, "location": location})
+    conn = get_conn()
+    try:
+        session = get_visit_record(conn, task_id)
+        started_at = (session.get("data") or {}).get("started_at", datetime.now().isoformat()) if session else datetime.now().isoformat()
+        update_visit_record(conn, task_id, stage="during", data={"notes": notes, "location": location, "started_at": started_at})
+    finally:
+        conn.close()
 
     return {
         "stage": "during",
@@ -102,14 +95,20 @@ async def visit_during(req: VisitRequest) -> dict:
 
 async def visit_after(req: VisitRequest) -> dict:
     task_id = req.data.get("task_id", "")
-    session = _visit_sessions.get(task_id, {})
+
+    conn = get_conn()
+    try:
+        session = get_visit_record(conn, task_id)
+    finally:
+        conn.close()
+
+    customer_type = (session or {}).get("customer_type", req.customer_type)
+    customer_id = (session or {}).get("customer_id", req.customer_id)
 
     needs = req.data.get("needs", "")
     commitments = req.data.get("commitments", "")
     objections = req.data.get("objections", "")
 
-    customer_type = session.get("customer_type", req.customer_type)
-    customer_id = session.get("customer_id", req.customer_id)
     customer = get_customer(customer_type, customer_id)
     customer_name = customer.get("basic_info", {}).get("name") if customer else "未知"
 
@@ -119,20 +118,16 @@ async def visit_after(req: VisitRequest) -> dict:
 
     follow_up_tasks = _build_follow_up_tasks(needs, commitments)
 
-    _visit_sessions[task_id] = {
-        **session,
-        "stage": "after",
-        "summary": auto_summary,
-        "tags_updated": tags_updated,
-        "completed_at": datetime.now().isoformat(),
-    }
-
-    update_visit_record(
-        task_id, stage="after",
-        summary=auto_summary, tags=tags_updated,
-        follow_up_tasks=follow_up_tasks,
-        data={"needs": needs, "commitments": commitments, "objections": objections},
-    )
+    conn = get_conn()
+    try:
+        update_visit_record(
+            conn, task_id, stage="after",
+            summary=auto_summary, tags=tags_updated,
+            follow_up_tasks=follow_up_tasks,
+            data={"needs": needs, "commitments": commitments, "objections": objections},
+        )
+    finally:
+        conn.close()
 
     return {
         "stage": "after",

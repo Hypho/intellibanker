@@ -297,6 +297,40 @@ function MessageBubble({ msg }) {
   );
 }
 
+/* ── Session sidebar item ── */
+function SessionItem({ s, active, onClick, onDelete }) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        padding: "8px 14px", cursor: "pointer", transition: "background 0.15s",
+        background: active ? `${C.primary}0a` : hovered ? "#f8fafc" : "transparent",
+        borderLeft: active ? `2px solid ${C.primary}` : "2px solid transparent",
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontSize: 12.5, color: C.text, overflow: "hidden",
+          textOverflow: "ellipsis", whiteSpace: "nowrap",
+        }}>
+          {s.title || "未命名对话"}
+        </div>
+        <div style={{ fontSize: 10.5, color: C.textDim, marginTop: 2 }}>
+          {(s.updated_at || "").slice(0, 16).replace("T", " ")}
+        </div>
+      </div>
+      <IconDelete
+        style={{ fontSize: 12, color: C.textDim, cursor: "pointer", flexShrink: 0, marginLeft: 4 }}
+        onClick={(e) => { e.stopPropagation(); onDelete(); }}
+      />
+    </div>
+  );
+}
+
 /* ── Main component ── */
 export default function Assistant({ role = "admin" }) {
   const [messages, setMessages] = useState([]);
@@ -308,6 +342,9 @@ export default function Assistant({ role = "admin" }) {
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
   const saveTimerRef = useRef(null);
+  const sessionIdRef = useRef(null);
+  const roleRef = useRef(role);
+  roleRef.current = role;
 
   // Load sessions list on mount
   useEffect(() => {
@@ -330,9 +367,19 @@ export default function Assistant({ role = "admin" }) {
           role, content, toolEvents: toolEvents || [],
         }));
         if (cleanMsgs.length >= 2) {
-          api.saveChatSession(role, cleanMsgs, "", sessionId).then((d) => {
-            if (d.session_id && !sessionId) setSessionId(d.session_id);
-            api.listChatSessions(role).then((r) => setSessions(r.sessions || [])).catch(() => {});
+          api.saveChatSession(roleRef.current, cleanMsgs, "", sessionIdRef.current).then((d) => {
+            if (d.session_id && !sessionIdRef.current) {
+              sessionIdRef.current = d.session_id;
+              setSessionId(d.session_id);
+            }
+            // Update sessions list locally instead of re-fetching
+            setSessions((prev) => {
+              const exists = prev.find((s) => s.id === d.session_id);
+              if (exists) {
+                return prev.map((s) => s.id === d.session_id ? { ...s, title: d.title || s.title, updated_at: new Date().toISOString() } : s);
+              }
+              return [{ id: d.session_id, role: roleRef.current, title: d.title || "", created_at: new Date().toISOString(), updated_at: new Date().toISOString() }, ...prev];
+            });
           }).catch(() => {});
         }
       }
@@ -346,6 +393,7 @@ export default function Assistant({ role = "admin" }) {
         ...m, toolEvents: m.toolEvents || [],
       }));
       setMessages(loadedMsgs);
+      sessionIdRef.current = sid;
       setSessionId(sid);
     } catch { /* ignore */ }
   };
@@ -365,46 +413,20 @@ export default function Assistant({ role = "admin" }) {
       .map((m) => ({ role: m.role, content: m.content }));
 
     const controller = api.streamChat(content, history, ({ event, data }) => {
+      const updateLast = (fn) => setMessages((prev) => [...prev.slice(0, -1), fn(prev[prev.length - 1])]);
+
       if (event === "tool_call") {
-        setMessages((prev) => {
-          const next = [...prev];
-          const last = { ...next[next.length - 1] };
-          last.toolEvents = [...(last.toolEvents || []), { event: "tool_call", name: data.name, args: data.args }];
-          next[next.length - 1] = last;
-          return next;
-        });
+        updateLast((last) => ({ ...last, toolEvents: [...(last.toolEvents || []), { event: "tool_call", name: data.name, args: data.args }] }));
       } else if (event === "tool_result") {
-        setMessages((prev) => {
-          const next = [...prev];
-          const last = { ...next[next.length - 1] };
-          last.toolEvents = [...(last.toolEvents || []), { event: "tool_result", name: data.name, content: data.content }];
-          next[next.length - 1] = last;
-          return next;
-        });
+        updateLast((last) => ({ ...last, toolEvents: [...(last.toolEvents || []), { event: "tool_result", name: data.name, content: data.content }] }));
       } else if (event === "answer") {
-        setMessages((prev) => {
-          const next = [...prev];
-          const last = { ...next[next.length - 1] };
-          last.content = (last.content || "") + data.content;
-          next[next.length - 1] = last;
-          return next;
-        });
+        updateLast((last) => ({ ...last, content: (last.content || "") + data.content }));
       } else if (event === "error") {
-        setMessages((prev) => {
-          const next = [...prev];
-          const last = { ...next[next.length - 1] };
-          last.isStreaming = false;
-          last.error = data.message;
-          next[next.length - 1] = last;
-          return next;
-        });
+        updateLast((last) => ({ ...last, isStreaming: false, error: data.message }));
         setIsStreaming(false);
       } else if (event === "done") {
         setMessages((prev) => {
-          const next = [...prev];
-          const last = { ...next[next.length - 1] };
-          last.isStreaming = false;
-          next[next.length - 1] = last;
+          const next = [...prev.slice(0, -1), { ...prev[prev.length - 1], isStreaming: false }];
           scheduleSave(next);
           return next;
         });
@@ -418,6 +440,7 @@ export default function Assistant({ role = "admin" }) {
   const clearChat = () => {
     if (streamRef.current) streamRef.current.abort();
     setMessages([]);
+    sessionIdRef.current = null;
     setSessionId(null);
     setIsStreaming(false);
   };
@@ -455,34 +478,13 @@ export default function Assistant({ role = "admin" }) {
             <div style={{ padding: "20px 14px", color: C.textDim, fontSize: 12, textAlign: "center" }}>暂无历史对话</div>
           ) : (
             sessions.map((s) => (
-              <div
+              <SessionItem
                 key={s.id}
+                s={s}
+                active={sessionId === s.id}
                 onClick={() => loadSession(s.id)}
-                style={{
-                  padding: "8px 14px", cursor: "pointer", transition: "background 0.15s",
-                  background: sessionId === s.id ? `${C.primary}0a` : "transparent",
-                  borderLeft: sessionId === s.id ? `2px solid ${C.primary}` : "2px solid transparent",
-                  display: "flex", justifyContent: "space-between", alignItems: "center",
-                }}
-                onMouseEnter={(e) => { if (sessionId !== s.id) e.currentTarget.style.background = "#f8fafc"; }}
-                onMouseLeave={(e) => { if (sessionId !== s.id) e.currentTarget.style.background = "transparent"; }}
-              >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    fontSize: 12.5, color: C.text, overflow: "hidden",
-                    textOverflow: "ellipsis", whiteSpace: "nowrap",
-                  }}>
-                    {s.title || "未命名对话"}
-                  </div>
-                  <div style={{ fontSize: 10.5, color: C.textDim, marginTop: 2 }}>
-                    {(s.updated_at || "").slice(0, 16).replace("T", " ")}
-                  </div>
-                </div>
-                <IconDelete
-                  style={{ fontSize: 12, color: C.textDim, cursor: "pointer", flexShrink: 0, marginLeft: 4 }}
-                  onClick={(e) => { e.stopPropagation(); deleteSession(s.id); }}
-                />
-              </div>
+                onDelete={() => deleteSession(s.id)}
+              />
             ))
           )}
         </div>

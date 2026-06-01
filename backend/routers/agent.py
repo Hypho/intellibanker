@@ -1,5 +1,5 @@
 """Agent chat router with SSE streaming + session persistence."""
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional
@@ -7,7 +7,7 @@ import json
 
 from backend.agent.core import stream_agent_events
 from backend.data.db import (
-    save_chat_session, get_chat_sessions, get_chat_session, delete_chat_session,
+    get_conn, save_chat_session, get_chat_sessions, get_chat_session, delete_chat_session,
 )
 
 router = APIRouter(prefix="/api/agent", tags=["agent"])
@@ -48,29 +48,38 @@ async def chat(req: ChatRequest):
 @router.post("/chat/save")
 async def save_chat(req: ChatSaveRequest):
     """Save or update a chat session."""
-    title = req.title
-    if not title and req.messages:
-        for m in req.messages:
-            if m.get("role") == "user" and m.get("content"):
-                title = m["content"][:50]
-                break
-    session_id = save_chat_session(
-        role=req.role, messages=req.messages, title=title, session_id=req.session_id,
+    title = req.title or next(
+        (m["content"][:50] for m in req.messages if m.get("role") == "user" and m.get("content")), ""
     )
+    conn = get_conn()
+    try:
+        session_id = save_chat_session(
+            conn, role=req.role, messages=req.messages, title=title, session_id=req.session_id,
+        )
+    finally:
+        conn.close()
     return {"session_id": session_id, "title": title}
 
 
 @router.get("/chat/sessions")
 async def list_chat_sessions(role: str = "admin"):
     """List chat sessions for a role."""
-    sessions = get_chat_sessions(role)
+    conn = get_conn()
+    try:
+        sessions = get_chat_sessions(conn, role)
+    finally:
+        conn.close()
     return {"sessions": sessions}
 
 
 @router.get("/chat/sessions/{session_id}")
 async def load_chat_session(session_id: int):
     """Load a specific chat session."""
-    session = get_chat_session(session_id)
+    conn = get_conn()
+    try:
+        session = get_chat_session(conn, session_id)
+    finally:
+        conn.close()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     return session
@@ -79,5 +88,9 @@ async def load_chat_session(session_id: int):
 @router.delete("/chat/sessions/{session_id}")
 async def remove_chat_session(session_id: int):
     """Delete a chat session."""
-    delete_chat_session(session_id)
+    conn = get_conn()
+    try:
+        delete_chat_session(conn, session_id)
+    finally:
+        conn.close()
     return {"ok": True}

@@ -53,6 +53,18 @@ def init_db():
             created_at  TEXT NOT NULL,
             updated_at  TEXT NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS reports (
+            id          TEXT PRIMARY KEY,
+            theme_id    TEXT NOT NULL,
+            theme_name  TEXT NOT NULL,
+            user_name   TEXT NOT NULL,
+            data_date   TEXT NOT NULL,
+            customer_count INTEGER NOT NULL DEFAULT 0,
+            status      TEXT NOT NULL DEFAULT 'completed',
+            report_json TEXT NOT NULL DEFAULT '{}',
+            created_at  TEXT NOT NULL
+        );
     """)
     conn.commit()
     conn.close()
@@ -206,3 +218,47 @@ def delete_chat_session(conn: sqlite3.Connection, session_id: int) -> bool:
     conn.execute("DELETE FROM chat_sessions WHERE id = ?", (session_id,))
     conn.commit()
     return True
+
+
+# ── Reports ─────────────────────────────────────────────
+
+def save_report(
+    conn: sqlite3.Connection,
+    report_id: str,
+    theme_id: str,
+    theme_name: str,
+    user_name: str,
+    data_date: str,
+    customer_count: int,
+    status: str,
+    report_json: str,
+) -> None:
+    conn.execute(
+        """INSERT OR REPLACE INTO reports
+           (id, theme_id, theme_name, user_name, data_date, customer_count, status, report_json, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (report_id, theme_id, theme_name, user_name, data_date, customer_count, status, report_json, datetime.now().isoformat()),
+    )
+    conn.commit()
+
+
+def get_report(conn: sqlite3.Connection, report_id: str) -> Optional[dict]:
+    row = conn.execute("SELECT * FROM reports WHERE id = ?", (report_id,)).fetchone()
+    if not row:
+        return None
+    d = dict(row)
+    if isinstance(d.get("report_json"), str):
+        try:
+            d["report_json"] = json.loads(d["report_json"])
+        except (json.JSONDecodeError, TypeError):
+            pass
+    return d
+
+
+def list_reports(conn: sqlite3.Connection, limit: int = 20) -> list[dict]:
+    rows = conn.execute(
+        "SELECT id, theme_id, theme_name, user_name, data_date, customer_count, status, created_at "
+        "FROM reports ORDER BY created_at DESC LIMIT ?",
+        (limit,),
+    ).fetchall()
+    return [dict(r) for r in rows]

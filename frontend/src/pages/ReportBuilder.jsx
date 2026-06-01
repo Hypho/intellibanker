@@ -97,52 +97,40 @@ export default function ReportBuilder({ role, roleConfig }) {
     api.listReportThemes().then((d) => setThemes(d.themes || [])).catch(() => {});
   }, []);
 
-  const handleGenerate = async () => {
+  const streamRef = useRef(null);
+
+  const handleGenerate = () => {
     if (!selectedTheme) { Message.warning("请先选择标签主题"); return; }
     setGenerating(true);
     setReport(null);
     setProgress({ phase: "start", message: "正在生成报告...", percent: 5 });
 
-    try {
-      // Use SSE for progress
-      const controller = new AbortController();
-      const params = new URLSearchParams({ theme_id: selectedTheme, user: role || "admin" });
-      if (roleConfig?.managerId) params.set("manager_id", roleConfig.managerId);
-      if (roleConfig?.branchId) params.set("branch_id", roleConfig.branchId);
-      const res = await fetch(`/api/report/generate/stream?${params}`, {
-        signal: controller.signal,
-      });
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
+    const params = { theme_id: selectedTheme, user: role || "admin" };
+    if (roleConfig?.managerId) params.manager_id = roleConfig.managerId;
+    if (roleConfig?.branchId) params.branch_id = roleConfig.branchId;
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop();
-
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            try {
-              const data = JSON.parse(line.slice(6));
-              setProgress(data);
-              if (data.phase === "complete" && data.report_id) {
-                // Fetch cached report by ID (no re-generation)
-                const reportData = await api.getReport(data.report_id);
-                setReport(reportData);
-              }
-            } catch { /* skip parse errors */ }
-          }
+    streamRef.current = api.streamReport(params, async ({ event, data }) => {
+      if (event === "data") {
+        setProgress(data);
+        if (data.phase === "complete" && data.report_id) {
+          try {
+            const reportData = await api.getReport(data.report_id);
+            setReport(reportData);
+          } catch (e) { Message.error("获取报告失败：" + e.message); }
+          setGenerating(false);
+        } else if (data.phase === "error") {
+          Message.error(data.message);
+          setGenerating(false);
         }
+      } else if (event === "error") {
+        Message.error("报告生成失败：" + data.message);
+        setGenerating(false);
       }
-    } catch (e) {
-      Message.error("报告生成失败：" + e.message);
-    } finally {
-      setGenerating(false);
-    }
+    });
   };
+
+  // Abort on unmount
+  useEffect(() => () => { if (streamRef.current) streamRef.current.abort(); }, []);
 
   const handleExport = async (format) => {
     if (!report?.id) return;

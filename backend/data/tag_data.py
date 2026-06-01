@@ -8,12 +8,19 @@ from backend.models.tag_schema import (
 # ── Tag Feature Definitions ──────────────────────────────
 
 ALL_FEATURES: dict[str, TagFeature] = {}
+_FEATURE_DEFS: list[TagFeature] = []  # collected at module level, registered explicitly
 
 
 def _f(feat: TagFeature) -> TagFeature:
-    """Register a feature and return it."""
-    ALL_FEATURES[feat.id] = feat
+    """Queue a feature for registration (deferred until register_features())."""
+    _FEATURE_DEFS.append(feat)
     return feat
+
+
+def register_features() -> None:
+    """Register all queued features into ALL_FEATURES. Idempotent."""
+    for feat in _FEATURE_DEFS:
+        ALL_FEATURES[feat.id] = feat
 
 
 # ── Asset features ───────────────────────────────────────
@@ -342,3 +349,7 @@ def get_all_themes() -> list[TagTheme]:
 def get_theme_by_id(theme_id: str) -> TagTheme | None:
     """Look up a theme by ID."""
     return next((t for t in THEMES if t.id == theme_id), None)
+
+
+# Auto-register on import (backward compat). Can also be called explicitly at startup.
+register_features()

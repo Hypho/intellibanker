@@ -96,94 +96,100 @@ def _extract_values(customers: list[dict], source_field: str) -> list[Any]:
     return values
 
 
-# ── Aggregation ──────────────────────────────────────────
+# ── Aggregation registry ─────────────────────────────────
+
+def _agg_avg(seg, all_vals, cfg):
+    numeric = [v for v in seg if isinstance(v, (int, float))]
+    all_num = [v for v in all_vals if isinstance(v, (int, float))]
+    return ({"value": round(mean(numeric), 2), "benchmark": round(mean(all_num), 2) if all_num else 0},
+            {"mean": round(mean(numeric), 2) if numeric else 0, "count": len(numeric)})
+
+
+def _agg_avg_len(seg, all_vals, cfg):
+    seg_lens = [len(v) if isinstance(v, (list, dict)) else 0 for v in seg]
+    all_lens = [len(v) if isinstance(v, (list, dict)) else 0 for v in all_vals]
+    return ({"value": round(mean(seg_lens), 2), "benchmark": round(mean(all_lens), 2) if all_lens else 0},
+            {"mean": round(mean(seg_lens), 2) if seg_lens else 0, "count": len(seg_lens)})
+
+
+def _agg_distribution(seg, all_vals, cfg):
+    numeric = [v for v in seg if isinstance(v, (int, float))]
+    return (_build_histogram(numeric, cfg.get("bins", 5), cfg.get("bin_labels", [])),
+            {"mean": round(mean(numeric), 2) if numeric else 0, "count": len(numeric)})
+
+
+def _agg_age_distribution(seg, all_vals, cfg):
+    today = date.today()
+    ages = []
+    for v in seg:
+        if v:
+            try:
+                bd = datetime.strptime(str(v), "%Y-%m-%d").date()
+                ages.append(today.year - bd.year - ((today.month, today.day) < (bd.month, bd.day)))
+            except ValueError:
+                pass
+    return (_build_histogram(ages, cfg.get("bins", [0,25,35,45,55,65,100]), cfg.get("bin_labels", [])),
+            {"mean": round(mean(ages), 1) if ages else 0, "count": len(ages)})
+
+
+def _agg_enum_count(seg, all_vals, cfg):
+    counter = Counter(v for v in seg if v is not None)
+    total = sum(counter.values()) or 1
+    top_n = cfg.get("top_n", 10)
+    items = counter.most_common(top_n)
+    return ({"labels": [str(k) for k, _ in items], "values": [v for _, v in items],
+             "percentages": [round(v / total * 100, 1) for _, v in items]},
+            {"total": total, "unique": len(counter)})
+
+
+def _agg_coverage_ratio(seg, all_vals, cfg):
+    total = len(seg) or 1
+    covered = sum(1 for v in seg if isinstance(v, (int, float)) and v > 0)
+    all_total = len(all_vals) or 1
+    all_covered = sum(1 for v in all_vals if isinstance(v, (int, float)) and v > 0)
+    return ({"value": round(covered / total * 100, 1), "benchmark": round(all_covered / all_total * 100, 1)},
+            {"covered": covered, "total": total})
+
+
+def _agg_deposit_ratio(seg, all_vals, cfg):
+    ratios = [v.get("current", 0) + v.get("term", 0) + v.get("large_certificate", 0)
+              for v in seg if isinstance(v, dict)]
+    val = mean(ratios) if ratios else 0
+    return {"value": round(val, 2)}, {"mean": round(val, 2), "count": len(ratios)}
+
+
+def _agg_change(seg, all_vals, cfg):
+    mode = cfg.get("_mode", "mom")
+    changes = _calc_aum_changes(seg, mode=mode)
+    val = mean(changes) if changes else 0
+    return ({"value": round(val * 100, 2), "benchmark": 0},
+            {"mean": round(val * 100, 2), "count": len(changes)})
+
+
+def _agg_trend(seg, all_vals, cfg):
+    trend = _aggregate_aum_trend(seg)
+    return trend, {"months": len(trend.get("labels", []))}
+
+
+AGGREGATORS = {
+    "avg": _agg_avg,
+    "avg_len": _agg_avg_len,
+    "distribution": _agg_distribution,
+    "age_distribution": _agg_age_distribution,
+    "enum_count": _agg_enum_count,
+    "coverage_ratio": _agg_coverage_ratio,
+    "deposit_ratio": _agg_deposit_ratio,
+    "mom_change": lambda seg, all_v, cfg: _agg_change(seg, all_v, {**cfg, "_mode": "mom"}),
+    "yoy_change": lambda seg, all_v, cfg: _agg_change(seg, all_v, {**cfg, "_mode": "yoy"}),
+    "trend": _agg_trend,
+}
+
 
 def _aggregate(seg_values: list, all_values: list, feature: TagFeature) -> tuple[dict, dict]:
-    """Compute aggregation and return (chart_data, raw_stats)."""
-    agg = feature.aggregation
-
-    if agg == "avg":
-        numeric = [v for v in seg_values if isinstance(v, (int, float))]
-        val = mean(numeric) if numeric else 0
-        all_numeric = [v for v in all_values if isinstance(v, (int, float))]
-        benchmark = mean(all_numeric) if all_numeric else 0
-        return {"value": round(val, 2), "benchmark": round(benchmark, 2)}, \
-               {"mean": round(val, 2), "count": len(numeric)}
-
-    if agg == "avg_len":
-        lengths = [len(v) if isinstance(v, (list, dict)) else 0 for v in seg_values]
-        val = mean(lengths) if lengths else 0
-        all_lengths = [len(v) if isinstance(v, (list, dict)) else 0 for v in all_values]
-        benchmark = mean(all_lengths) if all_lengths else 0
-        return {"value": round(val, 2), "benchmark": round(benchmark, 2)}, \
-               {"mean": round(val, 2), "count": len(lengths)}
-
-    if agg == "distribution":
-        numeric = [v for v in seg_values if isinstance(v, (int, float))]
-        bins = feature.chart_config.get("bins", 5)
-        labels = feature.chart_config.get("bin_labels", [])
-        hist = _build_histogram(numeric, bins, labels)
-        return hist, {"mean": round(mean(numeric), 2) if numeric else 0, "count": len(numeric)}
-
-    if agg == "age_distribution":
-        today = date.today()
-        ages = []
-        for v in seg_values:
-            if v:
-                try:
-                    bd = datetime.strptime(str(v), "%Y-%m-%d").date()
-                    ages.append(today.year - bd.year - ((today.month, today.day) < (bd.month, bd.day)))
-                except ValueError:
-                    pass
-        bins = feature.chart_config.get("bins", [0, 25, 35, 45, 55, 65, 100])
-        labels = feature.chart_config.get("bin_labels", [])
-        hist = _build_histogram(ages, bins, labels)
-        return hist, {"mean": round(mean(ages), 1) if ages else 0, "count": len(ages)}
-
-    if agg == "enum_count":
-        counter = Counter(v for v in seg_values if v is not None)
-        total = sum(counter.values()) or 1
-        top_n = feature.chart_config.get("top_n", 10)
-        sorted_items = counter.most_common(top_n)
-        chart = {"labels": [str(k) for k, _ in sorted_items],
-                 "values": [v for _, v in sorted_items],
-                 "percentages": [round(v / total * 100, 1) for _, v in sorted_items]}
-        return chart, {"total": total, "unique": len(counter)}
-
-    if agg == "coverage_ratio":
-        # Percentage of customers where the value is > 0
-        total = len(seg_values) or 1
-        covered = sum(1 for v in seg_values if isinstance(v, (int, float)) and v > 0)
-        val = covered / total * 100
-        all_total = len(all_values) or 1
-        all_covered = sum(1 for v in all_values if isinstance(v, (int, float)) and v > 0)
-        benchmark = all_covered / all_total * 100
-        return {"value": round(val, 1), "benchmark": round(benchmark, 1)}, \
-               {"covered": covered, "total": total}
-
-    if agg == "deposit_ratio":
-        # deposits / aum ratio
-        ratios = []
-        for v in seg_values:
-            if isinstance(v, dict):
-                total_dep = v.get("current", 0) + v.get("term", 0) + v.get("large_certificate", 0)
-                # Need aum from same customer - approximate from value
-                ratios.append(total_dep)
-        val = mean(ratios) if ratios else 0
-        return {"value": round(val, 2)}, {"mean": round(val, 2), "count": len(ratios)}
-
-    if agg in ("mom_change", "yoy_change"):
-        mode = "mom" if agg == "mom_change" else "yoy"
-        changes = _calc_aum_changes(seg_values, mode=mode)
-        val = mean(changes) if changes else 0
-        return {"value": round(val * 100, 2), "benchmark": 0}, \
-               {"mean": round(val * 100, 2), "count": len(changes)}
-
-    if agg == "trend":
-        # Aggregate aum_history across all customers
-        trend = _aggregate_aum_trend(seg_values)
-        return trend, {"months": len(trend.get("labels", []))}
-
+    """Dispatch to the registered aggregator for this feature's aggregation type."""
+    fn = AGGREGATORS.get(feature.aggregation)
+    if fn:
+        return fn(seg_values, all_values, feature.chart_config)
     return {}, {}
 
 

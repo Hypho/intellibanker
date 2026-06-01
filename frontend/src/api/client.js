@@ -91,6 +91,41 @@ export const api = {
     return controller;
   },
 
+  // Report generation (SSE streaming, data-only protocol)
+  streamReport: (params, onEvent) => {
+    const qs = new URLSearchParams(params).toString();
+    const controller = new AbortController();
+    fetch(BASE + "/report/generate/stream?" + qs, { signal: controller.signal })
+      .then((res) => {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        function read() {
+          reader.read().then(({ done, value }) => {
+            if (done) { onEvent({ event: "done", data: {} }); return; }
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop();
+            for (const line of lines) {
+              if (line.startsWith("data: ")) {
+                try {
+                  onEvent({ event: "data", data: JSON.parse(line.slice(6)) });
+                } catch { /* skip */ }
+              }
+            }
+            read();
+          });
+        }
+        read();
+      })
+      .catch((err) => {
+        if (err.name !== "AbortError") {
+          onEvent({ event: "error", data: { message: err.message } });
+        }
+      });
+    return controller;
+  },
+
   // Chat session persistence
   saveChatSession: (role, messages, title, sessionId) =>
     request("/agent/chat/save", {

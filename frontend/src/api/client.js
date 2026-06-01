@@ -107,4 +107,13 @@ export const api = {
   // Operation logs
   getLogs: (role, limit = 50) =>
     request(`/logs?role=${role || ""}&limit=${limit}`),
+
+  // Report builder
+  listReportThemes: () => request("/report/themes"),
+  getReportTheme: (id) => request(`/report/themes/${id}`),
+  generateReport: (themeId, user = "admin") =>
+    request("/report/generate", {
+      method: "POST",
+      body: JSON.stringify({ theme_id: themeId, user }),
+    }),
 };

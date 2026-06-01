@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 import sqlite3
 
-from backend.routers import insight, profile, workflow, agent
+from backend.routers import insight, profile, workflow, agent, report
 from backend.data.db import init_db, get_conn, log_operation, get_operation_logs
 # flake8: noqa
 
@@ -81,6 +81,7 @@ app.include_router(insight.router)
 app.include_router(profile.router)
 app.include_router(workflow.router)
 app.include_router(agent.router)
+app.include_router(report.router)
 
 
 @app.get("/health")

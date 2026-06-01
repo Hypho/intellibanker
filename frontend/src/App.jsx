@@ -6,6 +6,7 @@ import CustomerProfile from "./pages/CustomerProfile";
 import VisitWorkflow from "./pages/VisitWorkflow";
 import EventDashboard from "./pages/EventDashboard";
 import Assistant from "./pages/Assistant";
+import ReportBuilder from "./pages/ReportBuilder";
 import { C, FONT_DISPLAY, GRADIENT_HERO, GRADIENT_ACCENT, RADIUS } from "./theme";
 
 const { Sider, Content } = Layout;
@@ -15,6 +16,7 @@ const MENU_ITEMS = [
   { key: "profile", label: "客户画像", icon: <IconUser /> },
   { key: "workflow", label: "拜访流程", icon: <IconCalendar /> },
   { key: "events", label: "事件引擎", icon: <IconThunderbolt /> },
+  { key: "report", label: "客群画像报告", icon: <IconFile /> },
   { key: "assistant", label: "智能助手", icon: <IconRobot /> },
 ];
 
@@ -148,6 +150,7 @@ export default function App() {
           {active === "profile" && <CustomerProfile role={role} roleConfig={roleConfig} externalTarget={profileTarget} onTargetConsumed={() => setProfileTarget(null)} />}
           {active === "workflow" && <VisitWorkflow role={role} roleConfig={roleConfig} />}
           {active === "events" && <EventDashboard onNavigateToProfile={navigateToProfile} />}
+          {active === "report" && <ReportBuilder role={role} />}
           {active === "assistant" && <Assistant role={role} />}
         </Content>
       </Layout>

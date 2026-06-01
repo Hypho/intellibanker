@@ -116,4 +116,22 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ theme_id: themeId, user }),
     }),
+  exportReportWord: (reportId) =>
+    fetch(`${BASE}/report/${reportId}/export/word`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ desensitize: true }),
+    }).then((res) => {
+      if (!res.ok) throw new Error("导出失败");
+      return res.blob();
+    }),
+  exportReportPdf: (reportId) =>
+    fetch(`${BASE}/report/${reportId}/export/pdf`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ desensitize: true }),
+    }).then((res) => {
+      if (!res.ok) throw new Error("导出失败");
+      return res.blob();
+    }),
 };

@@ -154,6 +154,28 @@ export default function ReportBuilder({ role }) {
     }
   };
 
+  const handleExport = async (format) => {
+    if (!report?.id) return;
+    try {
+      Message.loading(`正在导出 ${format === "word" ? "Word" : "PDF"}...`);
+      const blob = format === "word"
+        ? await api.exportReportWord(report.id)
+        : await api.exportReportPdf(report.id);
+      const ext = format === "word" ? "docx" : "html";
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${report.theme_name}客群画像分析报告_${report.data_date}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      Message.success("导出成功");
+    } catch (e) {
+      Message.error("导出失败：" + e.message);
+    }
+  };
+
   const themeOptions = themes.map((t) => ({
     label: `${t.name}（${t.description}）`,
     value: t.id,
@@ -254,12 +276,12 @@ export default function ReportBuilder({ role }) {
             <div style={{ display: "flex", gap: 8 }}>
               <Button type="outline" size="small" icon={<IconDownload />}
                 style={{ borderRadius: RADIUS.sm }}
-                onClick={() => Message.info("Word/PDF 导出功能将在 P2 阶段实现")}>
+                onClick={() => handleExport("word")}>
                 导出 Word
               </Button>
               <Button type="outline" size="small" icon={<IconDownload />}
                 style={{ borderRadius: RADIUS.sm }}
-                onClick={() => Message.info("Word/PDF 导出功能将在 P2 阶段实现")}>
+                onClick={() => handleExport("pdf")}>
                 导出 PDF
               </Button>
             </div>

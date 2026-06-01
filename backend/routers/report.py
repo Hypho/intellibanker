@@ -1,14 +1,19 @@
 """Report router — theme listing, report generation, export."""
+import urllib.parse
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, Response
 from pydantic import BaseModel
 from typing import Optional
 import json
 
 from backend.data.tag_data import get_all_themes, get_theme_by_id
 from backend.services.report_generator import generate_report
+from backend.services.export_service import export_word, export_pdf, ExportConfig
 
 router = APIRouter(prefix="/api/report", tags=["report"])
+
+# In-memory report cache (session-scoped for demo)
+_report_cache: dict[str, object] = {}
 
 
 # ── Theme endpoints ──────────────────────────────────────
@@ -74,6 +79,8 @@ class GenerateRequest(BaseModel):
 async def generate_report_endpoint(req: GenerateRequest):
     """Generate a report for a tag theme (blocking, ~15-25s)."""
     report = await generate_report(req.theme_id, req.user)
+    if report.status == "completed":
+        _report_cache[report.id] = report
     return report.model_dump()
 
 
@@ -122,13 +129,78 @@ async def generate_report_stream(theme_id: str, user: str = "admin"):
 
 @router.get("/list")
 async def list_reports():
-    """List generated reports (in-memory, session-scoped for demo)."""
-    # In a real system this would query the DB
-    return {"reports": [], "message": "报告列表仅在会话期间可用"}
+    """List generated reports (in-memory cache)."""
+    return {
+        "reports": [
+            {
+                "id": r.id,
+                "theme_name": r.theme_name,
+                "customer_count": r.customer_count,
+                "generated_at": r.generated_at,
+                "status": r.status,
+            }
+            for r in _report_cache.values()
+        ]
+    }
 
 
 @router.get("/{report_id}")
 async def get_report(report_id: str):
     """Get a report instance by ID."""
-    # In a real system this would query the DB
-    raise HTTPException(status_code=404, detail="报告实例仅在生成时返回，请重新生成")
+    report = _report_cache.get(report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="报告不存在或已过期，请重新生成")
+    return report.model_dump()
+
+
+# ── Export endpoints ─────────────────────────────────────
+
+class ExportRequest(BaseModel):
+    desensitize: bool = True
+
+
+@router.post("/{report_id}/export/word")
+async def export_word_endpoint(report_id: str, req: ExportRequest = ExportRequest()):
+    """Export report as Word document."""
+    report = _report_cache.get(report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="报告不存在，请重新生成")
+
+    config = ExportConfig(desensitize=req.desensitize)
+    docx_bytes = export_word(report, config)
+
+    filename = f"{report.theme_name}客群画像分析报告_{report.data_date}.docx"
+    encoded = urllib.parse.quote(filename)
+    return Response(
+        content=docx_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded}"},
+    )
+
+
+@router.post("/{report_id}/export/pdf")
+async def export_pdf_endpoint(report_id: str, req: ExportRequest = ExportRequest()):
+    """Export report as PDF (falls back to HTML if weasyprint not installed)."""
+    report = _report_cache.get(report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="报告不存在，请重新生成")
+
+    config = ExportConfig(desensitize=req.desensitize)
+    pdf_bytes = export_pdf(report, config)
+
+    filename = f"{report.theme_name}客群画像分析报告_{report.data_date}"
+    encoded = urllib.parse.quote(filename)
+    is_pdf = pdf_bytes[:4] == b"%PDF"
+
+    if is_pdf:
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded}.pdf"},
+        )
+    else:
+        return Response(
+            content=pdf_bytes,
+            media_type="text/html",
+            headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded}.html"},
+        )

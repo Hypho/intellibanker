@@ -113,6 +113,17 @@ class ReportRecommendations(BaseModel):
     raw_text: str = ""
 
 
+class ExportConfig(BaseModel):
+    """Export configuration with desensitization rules."""
+    desensitize: bool = True
+    mask_rules: dict = Field(default_factory=lambda: {
+        "name": "partial",
+        "phone": "partial",
+        "id_card": "full",
+        "address": "partial",
+    })
+
+
 class ReportInstance(BaseModel):
     """Complete report instance."""
     id: str = ""

@@ -18,15 +18,32 @@ from backend.services.correlation_engine import discover_correlations
 from backend.config import call_deepseek
 
 
+def _filter_by_role(customers: list[dict], manager_id: str | None, branch_id: str | None) -> list[dict]:
+    """Filter customers by role scope before segment analysis."""
+    if manager_id:
+        return [c for c in customers if c.get("basic_info", {}).get("manager_id") == manager_id]
+    if branch_id:
+        from backend.data.mock_data import MANAGERS
+        branch_name = next((m["branch"] for m in MANAGERS if m["id"] == branch_id), None)
+        if branch_name:
+            return [c for c in customers if c.get("basic_info", {}).get("branch") == branch_name]
+    return customers
+
+
 # ── Report generation ────────────────────────────────────
 
-async def generate_report(theme_id: str, user: str = "admin") -> ReportInstance:
-    """Full report generation pipeline."""
+async def generate_report(
+    theme_id: str,
+    user: str = "admin",
+    manager_id: str | None = None,
+    branch_id: str | None = None,
+) -> ReportInstance:
+    """Full report generation pipeline with role-based filtering."""
     theme = get_theme_by_id(theme_id)
     if not theme:
         return ReportInstance(status="failed", message=f"主题 {theme_id} 不存在")
 
-    all_customers = get_personal_customers()
+    all_customers = _filter_by_role(get_personal_customers(), manager_id, branch_id)
 
     # Phase ② Segment
     seg = segment_customers(theme, all_customers)

@@ -150,7 +150,7 @@ export default function App() {
           {active === "profile" && <CustomerProfile role={role} roleConfig={roleConfig} externalTarget={profileTarget} onTargetConsumed={() => setProfileTarget(null)} />}
           {active === "workflow" && <VisitWorkflow role={role} roleConfig={roleConfig} />}
           {active === "events" && <EventDashboard onNavigateToProfile={navigateToProfile} />}
-          {active === "report" && <ReportBuilder role={role} />}
+          {active === "report" && <ReportBuilder role={role} roleConfig={roleConfig} />}
           {active === "assistant" && <Assistant role={role} />}
         </Content>
       </Layout>

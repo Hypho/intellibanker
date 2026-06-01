@@ -28,12 +28,16 @@ async def list_personal_profiles(
     search: Optional[str] = None,
     asset_level: Optional[str] = None,
     lifecycle: Optional[str] = None,
+    manager_id: Optional[str] = None,
 ):
     """List personal customers with optional filters."""
     from backend.data.mock_data import get_personal_customers
 
     customers = get_personal_customers()
     today = date.today()
+
+    if manager_id:
+        customers = [c for c in customers if c.get("basic_info", {}).get("manager_id") == manager_id]
 
     if search:
         s = search.lower()

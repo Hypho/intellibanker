@@ -111,10 +111,14 @@ export const api = {
   // Report builder
   listReportThemes: () => request("/report/themes"),
   getReportTheme: (id) => request(`/report/themes/${id}`),
-  generateReport: (themeId, user = "admin") =>
+  generateReport: (themeId, user = "admin", managerId, branchId) =>
     request("/report/generate", {
       method: "POST",
-      body: JSON.stringify({ theme_id: themeId, user }),
+      body: JSON.stringify({
+        theme_id: themeId, user,
+        manager_id: managerId || null,
+        branch_id: branchId || null,
+      }),
     }),
   exportReportWord: (reportId) =>
     fetch(`${BASE}/report/${reportId}/export/word`, {

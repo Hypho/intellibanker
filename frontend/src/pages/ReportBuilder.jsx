@@ -99,7 +99,7 @@ function FeatureChart({ feature }) {
 }
 
 /* ── Main component ── */
-export default function ReportBuilder({ role }) {
+export default function ReportBuilder({ role, roleConfig }) {
   const [themes, setThemes] = useState([]);
   const [selectedTheme, setSelectedTheme] = useState(null);
   const [report, setReport] = useState(null);
@@ -119,7 +119,10 @@ export default function ReportBuilder({ role }) {
     try {
       // Use SSE for progress
       const controller = new AbortController();
-      const res = await fetch(`/api/report/generate/stream?theme_id=${selectedTheme}&user=${role || "admin"}`, {
+      const params = new URLSearchParams({ theme_id: selectedTheme, user: role || "admin" });
+      if (roleConfig?.managerId) params.set("manager_id", roleConfig.managerId);
+      if (roleConfig?.branchId) params.set("branch_id", roleConfig.branchId);
+      const res = await fetch(`/api/report/generate/stream?${params}`, {
         signal: controller.signal,
       });
       const reader = res.body.getReader();
@@ -140,7 +143,7 @@ export default function ReportBuilder({ role }) {
               setProgress(data);
               if (data.phase === "complete" && data.report_id) {
                 // Fetch full report via blocking endpoint
-                const reportData = await api.generateReport(selectedTheme, role || "admin");
+                const reportData = await api.generateReport(selectedTheme, role || "admin", roleConfig?.managerId, roleConfig?.branchId);
                 setReport(reportData);
               }
             } catch { /* skip parse errors */ }

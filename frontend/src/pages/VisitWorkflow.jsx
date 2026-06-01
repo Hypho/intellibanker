@@ -31,9 +31,11 @@ export default function VisitWorkflow({ role, roleConfig }) {
 
   const loadCustomerList = async () => {
     try {
+      const params = { page: 1, page_size: 50 };
+      if (roleConfig?.managerId) params.manager_id = roleConfig.managerId;
       const res = customerType === "personal"
-        ? await api.listPersonalProfiles({ page: 1, page_size: 50 })
-        : await api.listEnterpriseProfiles({ page: 1, page_size: 50 });
+        ? await api.listPersonalProfiles(params)
+        : await api.listEnterpriseProfiles(params);
       setCustomerList(res.data || []);
     } catch (e) { /* silent */ }
   };

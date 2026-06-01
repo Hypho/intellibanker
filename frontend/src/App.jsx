@@ -26,7 +26,7 @@ const ROLE_OPTIONS = [
 
 const ROLE_CONFIG = {
   admin: { managerId: null, branchId: null },
-  branch_manager: { managerId: null, branchId: "M001" },
+  branch_manager: { managerId: null, branchId: "M001" },  // M001 → 查 MANAGERS 表得 "东城支行"
   manager: { managerId: "M001", branchId: null },
 };
 

@@ -243,7 +243,6 @@ def generate_personal_customers(n: int = 100) -> List[Dict[str, Any]]:
                 "app_login_days_30": random.randint(0, 30),
             },
             "tags": {
-                "asset_level": asset_level,
                 "lifecycle": lifecycle,
                 "risk_preference": risk_pref,
                 "marketing_response": random.choice(["高响应", "中响应", "低响应", "未触达"]),
@@ -311,11 +310,13 @@ def generate_enterprise_customers(n: int = 30) -> List[Dict[str, Any]]:
         controller_name = CONTROLLER_NAMES[(i - 1) % len(CONTROLLER_NAMES)]
         finance_name = FINANCE_NAMES[(i - 1) % len(FINANCE_NAMES)]
 
+        ent_manager = random.choice(MANAGERS)
         enterprise = {
             "id": eid,
             "basic_info": {
                 "name": _ENT_NAME(i),
                 "industry": industry,
+                "branch": ent_manager["branch"],
                 "registered_capital": _rand_amount(1000000, 100000000),
                 "actual_controller": controller_name,
                 "group": f"某集团{chr(65 + i % 5)}" if random.random() < 0.4 else None,

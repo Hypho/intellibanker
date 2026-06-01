@@ -24,9 +24,10 @@ async def list_personal_profiles(
     customers = get_personal_customers()
 
     if search:
+        s = search.lower()
         customers = [
             c for c in customers
-            if search in c["basic_info"]["name"] or search in c["id"]
+            if s in c["basic_info"]["name"].lower() or s in c["id"].lower()
         ]
     if asset_level:
         customers = [c for c in customers if c["asset_level"] == asset_level]
@@ -72,9 +73,10 @@ async def list_enterprise_profiles(
     customers = get_enterprise_customers()
 
     if search:
+        s = search.lower()
         customers = [
             c for c in customers
-            if search in c["basic_info"]["name"] or search in c["id"]
+            if s in c["basic_info"]["name"].lower() or s in c["id"].lower()
         ]
     if industry:
         customers = [c for c in customers if c["basic_info"]["industry"] == industry]

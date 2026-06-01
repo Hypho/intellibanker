@@ -7,18 +7,19 @@ import { Section } from "../components/SharedWidgets";
 
 const { Row, Col } = Grid;
 
-const STATS = [
-  { label: "今日触发事件", value: 23, color: C.primary },
-  { label: "待处理", value: 8, color: C.warning },
-  { label: "已完成", value: 15, color: C.success },
-  { label: "高优先级", value: 5, color: C.danger },
-];
-
 const PRIORITY_COLOR = { high: "red", medium: "orange" };
 
 export default function EventDashboard({ onNavigateToProfile }) {
   const [loading, setLoading] = useState(false);
   const [events, setEvents] = useState([]);
+
+  // 从实际事件数据派生统计卡片
+  const stats = [
+    { label: "今日触发事件", value: events.length, color: C.primary },
+    { label: "待处理", value: events.filter((e) => e.status === "待处理").length, color: C.warning },
+    { label: "已完成", value: events.filter((e) => e.status === "已完成").length, color: C.success },
+    { label: "高优先级", value: events.filter((e) => e.priority === "high").length, color: C.danger },
+  ];
 
   useEffect(() => { loadEvents(); }, []);
 
@@ -99,7 +100,7 @@ export default function EventDashboard({ onNavigateToProfile }) {
 
       {/* Stats */}
       <Row gutter={16} style={{ marginBottom: 20 }}>
-        {STATS.map((s, i) => (
+        {stats.map((s, i) => (
           <Col span={6} key={i}>
             <Card hoverable style={{ textAlign: "center", borderRadius: RADIUS.md }}>
               <div style={{ fontSize: 13, color: C.textMuted, marginBottom: 8 }}>{s.label}</div>

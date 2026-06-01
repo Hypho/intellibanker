@@ -59,6 +59,7 @@ export default function VisitWorkflow({ role, roleConfig }) {
   };
 
   const handleGenerateSummary = async () => {
+    if (!needs.trim() && !commitments.trim()) { Message.warning("请至少录入客户需求或客户承诺"); return; }
     setAfterLoading(true);
     try {
       const res = await api.visitWorkflow({ customer_type: customerType, customer_id: selectedCustomer, manager_id: roleConfig?.managerId || "M001", stage: "after", data: { task_id: beforeData?.task_id, needs, commitments, objections } });
@@ -246,7 +247,7 @@ export default function VisitWorkflow({ role, roleConfig }) {
             <Row gutter={16}>
               <Col span={12}>
                 <div style={{ fontSize: 12.5, color: C.textMuted, marginBottom: 6, fontWeight: 500 }}>开始时间</div>
-                <div style={{ fontSize: 15, color: C.primary, fontFamily: FONT_DISPLAY, fontWeight: 600 }}>{visitStartTime}</div>
+                <div style={{ fontSize: 15, color: C.primary, fontFamily: FONT_DISPLAY, fontWeight: 600 }}>{visitStartTime}（保存后以服务端时间为准）</div>
               </Col>
               <Col span={12}>
                 <div style={{ fontSize: 12.5, color: C.textMuted, marginBottom: 6, fontWeight: 500 }}>地点</div>

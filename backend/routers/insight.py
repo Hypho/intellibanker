@@ -128,7 +128,7 @@ def _opportunities(personal: list) -> dict:
 
 
 def _monthly_trends(personal: list) -> dict:
-    """生成近6个月存贷款趋势数据（基于客户数据聚合+微小波动模拟增长）。"""
+    """生成近6个月存贷款趋势数据（末月对齐当前快照，历史月份倒推模拟）。"""
     base_deposits = sum(
         c["deposits"]["current"] + c["deposits"]["term"] + c["deposits"]["large_certificate"]
         for c in personal
@@ -138,17 +138,17 @@ def _monthly_trends(personal: list) -> dict:
     import random as _rand
     _rand.seed(42)
     months = ["2025-12", "2026-01", "2026-02", "2026-03", "2026-04", "2026-05"]
-    deposit_trend = []
-    loan_trend = []
-    dep = base_deposits
-    lon = base_loans
-    for _ in range(6):
-        dep = int(dep * (1 + _rand.uniform(-0.02, 0.04)))
-        lon = int(lon * (1 + _rand.uniform(-0.01, 0.03)))
-        deposit_trend.append(dep)
-        loan_trend.append(lon)
+    # 生成6个月的随机波动系数
+    factors_dep = [_rand.uniform(-0.02, 0.04) for _ in range(6)]
+    factors_lon = [_rand.uniform(-0.01, 0.03) for _ in range(6)]
+    # 末月 = 当前快照，往前倒推
+    dep_points = [base_deposits]
+    lon_points = [base_loans]
+    for i in range(5, 0, -1):
+        dep_points.insert(0, int(dep_points[0] / (1 + factors_dep[i])))
+        lon_points.insert(0, int(lon_points[0] / (1 + factors_lon[i])))
 
-    return {"months": months, "deposit_trend": deposit_trend, "loan_trend": loan_trend}
+    return {"months": months, "deposit_trend": dep_points, "loan_trend": lon_points}
 
 
 async def _generate_insight_summary(overview: dict, metrics: dict, structure: dict) -> str:
@@ -185,7 +185,7 @@ async def get_insight_report(
         branch_name = next((m["branch"] for m in MANAGERS if m["id"] == branch_id), None)
         if branch_name:
             personal = [c for c in personal if c["basic_info"]["branch"] == branch_name]
-            enterprise = [e for e in enterprise if e["id"][:1] == "E"]  # 简化：全量企业
+            enterprise = [e for e in enterprise if e["basic_info"].get("branch") == branch_name]
 
     if dimension == "manager" and manager_id:
         personal = [c for c in personal if c["basic_info"]["manager_id"] == manager_id]
@@ -224,6 +224,7 @@ async def get_ai_summary(
         branch_name = next((m["branch"] for m in MANAGERS if m["id"] == branch_id), None)
         if branch_name:
             personal = [c for c in personal if c["basic_info"]["branch"] == branch_name]
+            enterprise = [e for e in enterprise if e["basic_info"].get("branch") == branch_name]
 
     if dimension == "manager" and manager_id:
         personal = [c for c in personal if c["basic_info"]["manager_id"] == manager_id]

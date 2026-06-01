@@ -70,9 +70,9 @@ def sample_customers():
 
 def test_themes_loaded():
     themes = get_all_themes()
-    assert len(themes) == 3
+    assert len(themes) >= 6  # 3 original + new themes
     ids = {t.id for t in themes}
-    assert ids == {"high_net_worth", "salary_customer", "churn_risk"}
+    assert {"high_net_worth", "salary_customer", "churn_risk"}.issubset(ids)
 
 
 def test_features_loaded():

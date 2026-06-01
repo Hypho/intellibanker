@@ -43,7 +43,12 @@ async def generate_report(
     if not theme:
         return ReportInstance(status="failed", message=f"主题 {theme_id} 不存在")
 
-    all_customers = _filter_by_role(get_personal_customers(), manager_id, branch_id)
+    # Select data source based on customer type
+    if theme.customer_type == "enterprise":
+        from backend.data.mock_data import get_enterprise_customers
+        all_customers = _filter_by_role(get_enterprise_customers(), manager_id, branch_id)
+    else:
+        all_customers = _filter_by_role(get_personal_customers(), manager_id, branch_id)
 
     # Phase ② Segment
     seg = segment_customers(theme, all_customers)

@@ -240,6 +240,126 @@ _f(TagFeature(
     display_order=3,
 ))
 
+# ── Extended features ────────────────────────────────────
+
+_f(TagFeature(
+    id="household_size_distribution", name="家庭规模分布", description="客群家庭人口数分布",
+    data_type="enum", source_field="household_size", aggregation="enum_count",
+    chart_type="pie", chart_config={"top_n": 6},
+    business_hint="家庭规模影响保险需求和教育金规划，大家庭更需要家庭保障方案",
+    display_order=1,
+    is_top5_candidate=False,
+))
+
+_f(TagFeature(
+    id="salary_level_distribution", name="代发工资水平分布", description="代发工资客户的薪资区间分布",
+    data_type="number", source_field="monthly_salary", aggregation="distribution",
+    chart_type="histogram",
+    chart_config={"bins": [0, 3000, 5000, 8000, 15000, 30000, 999999],
+                  "bin_labels": ["3千以下", "3-5千", "5-8千", "8千-1.5万", "1.5-3万", "3万以上"]},
+    business_hint="工资水平决定消费能力和理财需求层级",
+    display_order=2,
+    is_top5_candidate=False,
+))
+
+_f(TagFeature(
+    id="loan_type_distribution", name="贷款类型分布", description="有贷客户的贷款产品类型分布",
+    data_type="enum", source_field="loans.type", aggregation="enum_count",
+    chart_type="pie", chart_config={"top_n": 5},
+    business_hint="贷款类型反映客户资金需求特征，按揭客户有长期维护价值",
+    display_order=1,
+    is_top5_candidate=False,
+))
+
+_f(TagFeature(
+    id="contact_response_distribution", name="触达响应分布", description="客户触达响应情况分布",
+    data_type="enum", source_field="contact_history.response", aggregation="enum_count",
+    chart_type="pie", chart_config={"top_n": 5},
+    business_hint="触达响应率衡量营销有效性，低响应客户需调整触达策略",
+    display_order=1,
+    is_top5_candidate=False,
+))
+
+_f(TagFeature(
+    id="last_transaction_recency", name="最近交易距今", description="客户最近交易距今天数分布",
+    data_type="number", source_field="last_transaction_days", aggregation="avg",
+    chart_type="metric_card", chart_config={"unit": "天", "format": "int"},
+    business_hint="交易距今越久说明客户活跃度越低，超过30天需激活",
+    display_order=2,
+    is_top5_candidate=False,
+))
+
+_f(TagFeature(
+    id="large_transaction_ratio", name="大额交易占比", description="大额交易（>5万）占总交易的比例",
+    data_type="number", source_field="large_transaction_ratio", aggregation="avg",
+    chart_type="metric_card", chart_config={"unit": "%", "format": "percent"},
+    business_hint="大额交易占比高的客户资金实力强，适合推荐高端理财",
+    display_order=3,
+    is_top5_candidate=False,
+))
+
+# ── Enterprise-specific features ─────────────────────────
+
+_f(TagFeature(
+    id="ent_industry_distribution", name="行业分布", description="企业客户的行业构成",
+    data_type="enum", source_field="basic_info.industry", aggregation="enum_count",
+    chart_type="pie", chart_config={"top_n": 8},
+    business_hint="行业分布决定信贷政策方向和风险集中度",
+    display_order=1,
+))
+
+_f(TagFeature(
+    id="ent_credit_utilization", name="平均授信使用", description="企业客户平均授信使用额度",
+    data_type="number", source_field="financial.credit_used", aggregation="avg",
+    chart_type="metric_card", chart_config={"unit": "万元", "format": "money"},
+    business_hint="授信使用额度反映企业资金需求强度，高使用率需关注还款风险",
+    display_order=2,
+))
+
+_f(TagFeature(
+    id="ent_sentiment_distribution", name="舆情分布", description="企业客户舆情情感分布",
+    data_type="enum", source_field="risk.sentiment", aggregation="enum_count",
+    chart_type="pie", chart_config={"top_n": 3},
+    business_hint="舆情负面的企业需加强风险监控，正面企业可拓展合作",
+    display_order=3,
+))
+
+_f(TagFeature(
+    id="ent_employee_scale", name="员工规模分布", description="企业客户员工规模区间分布",
+    data_type="number", source_field="basic_info.employee_count", aggregation="distribution",
+    chart_type="histogram",
+    chart_config={"bins": [0, 50, 200, 500, 1000, 9999],
+                  "bin_labels": ["50人以下", "50-200人", "200-500人", "500-1000人", "1000人以上"]},
+    business_hint="员工规模影响代发工资和对公结算业务潜力",
+    display_order=4,
+))
+
+_f(TagFeature(
+    id="ent_annual_revenue", name="年营收分布", description="企业客户年营收区间分布",
+    data_type="number", source_field="financial.annual_revenue", aggregation="distribution",
+    chart_type="histogram",
+    chart_config={"bins": [0, 10000000, 50000000, 100000000, 500000000, 9999999999],
+                  "bin_labels": ["1千万以下", "1-5千万", "5千万-1亿", "1-5亿", "5亿以上"]},
+    business_hint="年营收规模决定企业客户价值层级和产品适配性",
+    display_order=5,
+))
+
+_f(TagFeature(
+    id="ent_product_coverage", name="产品覆盖度", description="企业客户平均持有产品数",
+    data_type="number", source_field="covered_products", aggregation="avg_len",
+    chart_type="metric_card", chart_config={"unit": "个", "format": "int"},
+    business_hint="产品覆盖度越高客户粘性越强，低于2个有交叉销售空间",
+    display_order=6,
+))
+
+_f(TagFeature(
+    id="ent_deposit_balance", name="平均存款沉淀", description="企业客户平均存款余额",
+    data_type="number", source_field="financial.deposit_balance", aggregation="avg",
+    chart_type="metric_card", chart_config={"unit": "万元", "format": "money"},
+    business_hint="存款沉淀是对公负债业务的核心指标，高沉淀企业是优质客户",
+    display_order=7,
+))
+
 
 # ── Predefined Tag Themes ────────────────────────────────
 
@@ -326,6 +446,155 @@ THEMES: list[TagTheme] = [
             TagGroup(id="contact", name="触达历史",
                      description="分析流失客群的社区和产品覆盖",
                      feature_ids=["community_distribution", "product_count"]),
+        ],
+    ),
+
+    # ── 新增：年轻客群 ──
+    TagTheme(
+        id="young_customers",
+        name="年轻客群",
+        description="35岁以下的年轻个人客户",
+        customer_type="personal",
+        filter_group=FilterGroup(logic="AND", rules=[
+            FilterRule(field="birth_date", operator=">=", value="1991-01-01"),
+        ]),
+        tag_groups=[
+            TagGroup(id="demographic", name="基础画像",
+                     description="分析年轻客群的人口统计特征",
+                     feature_ids=["gender_ratio", "age_distribution", "education_distribution",
+                                  "marital_distribution", "household_size_distribution"]),
+            TagGroup(id="asset", name="资产特征",
+                     description="分析年轻客群的资产规模和结构",
+                     feature_ids=["avg_aum", "aum_distribution", "deposit_ratio",
+                                  "aum_mom_change", "aum_trend"]),
+            TagGroup(id="behavior", name="行为偏好",
+                     description="分析年轻客群的交易和渠道行为",
+                     feature_ids=["transaction_frequency", "channel_preference",
+                                  "app_activity", "large_transaction_ratio"]),
+            TagGroup(id="product", name="产品与社区",
+                     description="分析年轻客群的产品持有和社区分布",
+                     feature_ids=["product_count", "product_type_distribution",
+                                  "community_distribution", "business_district"]),
+        ],
+    ),
+
+    # ── 新增：代发工资客群（增强版）──
+    TagTheme(
+        id="salary_customer",
+        name="代发工资客户",
+        description="开通代发工资业务的个人客户",
+        customer_type="personal",
+        filter_group=FilterGroup(logic="AND", rules=[
+            FilterRule(field="salary_account", operator="==", value=True),
+        ]),
+        tag_groups=[
+            TagGroup(id="income", name="收入特征分析",
+                     description="分析代发工资客户的收入水平和稳定性",
+                     feature_ids=["salary_amount", "salary_level_distribution",
+                                  "aum_distribution", "deposit_ratio"]),
+            TagGroup(id="demographic", name="客群基础特征",
+                     description="分析客群的人口统计学特征",
+                     feature_ids=["gender_ratio", "age_distribution", "occupation_distribution",
+                                  "region_distribution", "household_size_distribution"]),
+            TagGroup(id="product", name="产品持有分析",
+                     description="分析代发客户的产品覆盖情况",
+                     feature_ids=["product_count", "product_type_distribution",
+                                  "loan_ratio", "loan_type_distribution"]),
+            TagGroup(id="behavior", name="活跃度分析",
+                     description="分析代发客户的交易和渠道行为",
+                     feature_ids=["transaction_frequency", "channel_preference",
+                                  "app_activity", "last_transaction_recency"]),
+            TagGroup(id="community", name="社区场景",
+                     description="分析代发客户的社区和商圈分布",
+                     feature_ids=["community_distribution", "business_district"]),
+        ],
+    ),
+
+    # ── 新增：流失预警客群（增强版）──
+    TagTheme(
+        id="churn_risk",
+        name="流失预警客户",
+        description="处于衰退期或流失预警阶段的个人客户",
+        customer_type="personal",
+        filter_group=FilterGroup(logic="OR", rules=[
+            FilterRule(field="lifecycle", operator="==", value="衰退期"),
+            FilterRule(field="lifecycle", operator="==", value="流失预警"),
+        ]),
+        tag_groups=[
+            TagGroup(id="asset", name="资产变化分析",
+                     description="分析流失风险客户的资产变化趋势",
+                     feature_ids=["avg_aum", "aum_mom_change", "aum_yoy_change",
+                                  "aum_trend", "deposit_ratio"]),
+            TagGroup(id="risk", name="风险特征分析",
+                     description="分析流失风险客户的风险指标",
+                     feature_ids=["churn_probability", "lifecycle_distribution",
+                                  "event_count", "last_transaction_recency"]),
+            TagGroup(id="demographic", name="客群基础特征",
+                     description="分析流失客群的人口统计学特征",
+                     feature_ids=["gender_ratio", "age_distribution", "asset_level_ratio",
+                                  "region_distribution", "occupation_distribution"]),
+            TagGroup(id="behavior", name="行为衰减分析",
+                     description="分析流失客群的行为活跃度下降情况",
+                     feature_ids=["transaction_frequency", "channel_preference",
+                                  "app_activity", "large_transaction_ratio"]),
+            TagGroup(id="contact", name="触达与社区",
+                     description="分析流失客群的触达响应和社区覆盖",
+                     feature_ids=["contact_response_distribution", "community_distribution",
+                                  "product_count"]),
+        ],
+    ),
+
+    # ── 新增：大中型企业客户 ──
+    TagTheme(
+        id="large_enterprise",
+        name="大中型企业客户",
+        description="员工200人以上或年营收5000万以上的企业客户",
+        customer_type="enterprise",
+        filter_group=FilterGroup(logic="OR", rules=[
+            FilterRule(field="basic_info.employee_count", operator=">=", value=200),
+            FilterRule(field="financial.annual_revenue", operator=">=", value=50000000),
+        ]),
+        tag_groups=[
+            TagGroup(id="overview", name="企业规模概览",
+                     description="分析大中型企业的规模和行业分布",
+                     feature_ids=["ent_industry_distribution", "ent_employee_scale",
+                                  "ent_annual_revenue"]),
+            TagGroup(id="financial", name="金融业务分析",
+                     description="分析企业的授信使用和产品覆盖",
+                     feature_ids=["ent_credit_utilization", "ent_product_coverage",
+                                  "ent_deposit_balance"]),
+            TagGroup(id="risk", name="风险与舆情",
+                     description="分析企业的风险状况和舆情",
+                     feature_ids=["ent_sentiment_distribution", "churn_probability",
+                                  "event_count"]),
+            TagGroup(id="behavior", name="业务行为",
+                     description="分析企业的交易和渠道行为",
+                     feature_ids=["transaction_frequency", "channel_preference",
+                                  "app_activity"]),
+        ],
+    ),
+
+    # ── 新增：制造业企业客户 ──
+    TagTheme(
+        id="manufacturing_enterprise",
+        name="制造业企业客户",
+        description="所属行业为制造业的企业客户",
+        customer_type="enterprise",
+        filter_group=FilterGroup(logic="AND", rules=[
+            FilterRule(field="basic_info.industry", operator="==", value="制造"),
+        ]),
+        tag_groups=[
+            TagGroup(id="overview", name="企业规模概览",
+                     description="分析制造业企业的规模和结构",
+                     feature_ids=["ent_industry_distribution", "ent_employee_scale",
+                                  "ent_annual_revenue"]),
+            TagGroup(id="financial", name="金融需求分析",
+                     description="分析制造业企业的金融业务需求",
+                     feature_ids=["ent_credit_utilization", "ent_product_coverage",
+                                  "ent_deposit_balance"]),
+            TagGroup(id="risk", name="风险评估",
+                     description="分析制造业企业的风险和舆情",
+                     feature_ids=["ent_sentiment_distribution", "churn_probability"]),
         ],
     ),
 ]

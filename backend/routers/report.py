@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from backend.data.tag_data import get_all_themes, get_theme_by_id
-from backend.data.db import get_conn, save_report, get_report, list_reports as db_list_reports
+from backend.data.db import get_conn, save_report, get_report, list_reports as db_list_reports, delete_report
 from backend.services.report_generator import generate_report
 from backend.services.export_service import export_word, export_pdf, ExportConfig
 
@@ -164,6 +164,19 @@ async def get_report_endpoint(report_id: str):
     if not report:
         raise HTTPException(status_code=404, detail="报告不存在或已过期，请重新生成")
     return report.model_dump()
+
+
+@router.delete("/{report_id}")
+async def delete_report_endpoint(report_id: str):
+    """Delete a report by ID."""
+    conn = get_conn()
+    try:
+        deleted = delete_report(conn, report_id)
+    finally:
+        conn.close()
+    if not deleted:
+        raise HTTPException(status_code=404, detail="报告不存在")
+    return {"ok": True}
 
 
 # ── Export endpoints ─────────────────────────────────────

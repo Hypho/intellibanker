@@ -262,3 +262,9 @@ def list_reports(conn: sqlite3.Connection, limit: int = 20) -> list[dict]:
         (limit,),
     ).fetchall()
     return [dict(r) for r in rows]
+
+
+def delete_report(conn: sqlite3.Connection, report_id: str) -> bool:
+    cur = conn.execute("DELETE FROM reports WHERE id = ?", (report_id,))
+    conn.commit()
+    return cur.rowcount > 0

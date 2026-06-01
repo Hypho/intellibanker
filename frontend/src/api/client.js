@@ -156,6 +156,8 @@ export const api = {
       }),
     }),
   getReport: (reportId) => request(`/report/${reportId}`),
+  listReports: () => request("/report/list"),
+  deleteReport: (reportId) => request(`/report/${reportId}`, { method: "DELETE" }),
   exportReportWord: (reportId) =>
     fetch(`${BASE}/report/${reportId}/export/word`, {
       method: "POST",

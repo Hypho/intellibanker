@@ -379,13 +379,15 @@ export default function ReportBuilder({ role, roleConfig }) {
             {/* Overview */}
             {report.overview && (
               <Section title="一、客群基础概览" icon={<IconUser />}>
-                <Row gutter={12} style={{ marginBottom: 12 }}>
-                  <Col span={6}><MetricCard label="客群总人数" value={report.overview.total_count} unit="人" color={C.primary} /></Col>
-                  <Col span={6}><MetricCard label="核心客群" value={report.overview.core_segment || "—"} color={C.accent} /></Col>
-                  <Col span={6}><MetricCard label="男女比例" value={(() => { const g = report.overview.gender_stats || {}; return `${g["男"]||0}:${g["女"]||0}`; })()} color="#3b82f6" /></Col>
-                  <Col span={6}><MetricCard label="覆盖地域" value={Object.keys(report.overview.region_stats || {}).length} unit="个" color="#22c55e" /></Col>
-                </Row>
-                <Row gutter={12}>
+                {/* Metric cards row */}
+                <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+                  <div style={{ flex: 1 }}><MetricCard label="客群总人数" value={report.overview.total_count} unit="人" color={C.primary} /></div>
+                  <div style={{ flex: 1 }}><MetricCard label="核心客群" value={report.overview.core_segment || "—"} color={C.accent} /></div>
+                  <div style={{ flex: 1 }}><MetricCard label="男女比例" value={(() => { const g = report.overview.gender_stats || {}; return `${g["男"]||0}:${g["女"]||0}`; })()} color="#3b82f6" /></div>
+                  <div style={{ flex: 1 }}><MetricCard label="覆盖地域" value={Object.keys(report.overview.region_stats || {}).length} unit="个" color="#22c55e" /></div>
+                </div>
+                {/* Charts row */}
+                <Row gutter={16}>
                   <Col span={8}>
                     <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 6, fontWeight: 600 }}>年龄分布</div>
                     <FeatureChart feature={{ chart_type: "histogram", chart_data: report.overview.age_histogram, feature_name: "年龄" }} />
@@ -422,13 +424,32 @@ export default function ReportBuilder({ role, roleConfig }) {
                     ))}
                   </div>
                 )}
-                <Row gutter={[12, 12]}>
-                  {group.features.map((f) => (
-                    <Col key={f.feature_id} span={f.chart_type === "metric_card" ? 6 : f.chart_type === "line" ? 24 : 8}>
-                      <FeatureCard feature={f} />
-                    </Col>
-                  ))}
-                </Row>
+                {/* Metric cards — flex row, equal width */}
+                {group.features.filter((f) => f.chart_type === "metric_card").length > 0 && (
+                  <div style={{ display: "flex", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
+                    {group.features.filter((f) => f.chart_type === "metric_card").map((f) => (
+                      <div key={f.feature_id} style={{ flex: "1 1 0", minWidth: 130 }}>
+                        <FeatureCard feature={f} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {/* Pie/bar/histogram charts — 3 per row */}
+                {group.features.filter((f) => f.chart_type !== "metric_card" && f.chart_type !== "line").length > 0 && (
+                  <Row gutter={[12, 12]} style={{ marginBottom: group.features.some((f) => f.chart_type === "line") ? 12 : 0 }}>
+                    {group.features.filter((f) => f.chart_type !== "metric_card" && f.chart_type !== "line").map((f) => (
+                      <Col key={f.feature_id} span={8}>
+                        <FeatureCard feature={f} />
+                      </Col>
+                    ))}
+                  </Row>
+                )}
+                {/* Line charts — full width */}
+                {group.features.filter((f) => f.chart_type === "line").map((f) => (
+                  <div key={f.feature_id} style={{ marginBottom: 12 }}>
+                    <FeatureCard feature={f} />
+                  </div>
+                ))}
               </Section>
             ))}
 

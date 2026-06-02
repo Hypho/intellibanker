@@ -1,0 +1,1426 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920, initial-scale=1">
+<title>IntelliBanker 智能营销平台</title>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --primary: #0A3D6B;
+  --secondary: #1B6CA8;
+  --accent: #C9A96E;
+  --white: #FFFFFF;
+  --light-bg: #F7F9FC;
+  --text-dark: #1A2A3A;
+  --text-body: #4A5568;
+  --text-light: #8A96A8;
+  --card-shadow: 0 2px 20px rgba(10,61,107,0.08);
+  --card-shadow-hover: 0 8px 40px rgba(10,61,107,0.15);
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #0A3D6B;
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+}
+
+/* ==================== SLIDE BASE ==================== */
+.slide {
+  position: absolute;
+  top: 0; left: 0;
+  width: 1920px;
+  height: 1080px;
+  background: var(--white);
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+}
+.slide.active {
+  display: flex;
+}
+
+/* Scale to fit viewport */
+.slide-container {
+  position: relative;
+  width: 1920px;
+  height: 1080px;
+  transform-origin: top left;
+  margin: 0 auto;
+}
+
+/* ==================== GOLD LINE ==================== */
+.gold-line {
+  width: 120px;
+  height: 2px;
+  background: var(--accent);
+  margin: 0 auto;
+}
+.gold-line-left {
+  width: 60px;
+  height: 2px;
+  background: var(--accent);
+}
+
+/* ==================== PAGE NUMBER ==================== */
+.page-number {
+  position: absolute;
+  bottom: 30px;
+  right: 50px;
+  font-family: 'Segoe UI', -apple-system, sans-serif;
+  font-size: 14px;
+  color: var(--text-light);
+  letter-spacing: 1px;
+}
+
+/* ==================== BOTTOM DECORATION ==================== */
+.slide-bottom-line {
+  position: absolute;
+  bottom: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 2px;
+  background: var(--accent);
+}
+
+/* ==================== NAV DOTS ==================== */
+.nav-dots {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  z-index: 1000;
+}
+.nav-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.4);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 1.5px solid rgba(255,255,255,0.6);
+}
+.nav-dot.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  transform: scale(1.2);
+}
+
+/* ==================== ANIMATIONS ==================== */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes drawLine {
+  from { width: 0; }
+  to { width: 120px; }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-40px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(40px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.slide.play-anim .anim-fade-up {
+  animation: fadeInUp 0.6s ease forwards;
+}
+.slide.play-anim .anim-fade {
+  animation: fadeIn 0.8s ease forwards;
+}
+.slide.play-anim .anim-scale {
+  animation: scaleIn 0.6s ease forwards;
+}
+.slide.play-anim .anim-slide-left {
+  animation: slideInLeft 0.6s ease forwards;
+}
+.slide.play-anim .anim-slide-right {
+  animation: slideInRight 0.6s ease forwards;
+}
+
+.delay-1 { animation-delay: 0.15s !important; }
+.delay-2 { animation-delay: 0.3s !important; }
+.delay-3 { animation-delay: 0.45s !important; }
+.delay-4 { animation-delay: 0.6s !important; }
+.delay-5 { animation-delay: 0.75s !important; }
+.delay-6 { animation-delay: 0.9s !important; }
+.delay-7 { animation-delay: 1.05s !important; }
+.delay-8 { animation-delay: 1.2s !important; }
+
+/* ==================== TYPOGRAPHY ==================== */
+.heading-primary {
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-weight: 700;
+  font-size: 42px;
+  color: var(--primary);
+  letter-spacing: 1px;
+}
+.heading-en {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 600;
+  color: var(--primary);
+}
+.subheading {
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-weight: 400;
+  font-size: 22px;
+  color: var(--text-body);
+  line-height: 1.6;
+}
+.body-text {
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-weight: 400;
+  font-size: 18px;
+  color: var(--text-body);
+  line-height: 1.8;
+}
+.label-text {
+  font-family: 'Segoe UI', -apple-system, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 3px;
+}
+
+/* ==================== CARDS ==================== */
+.card {
+  background: var(--white);
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
+  padding: 36px 30px;
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+.card:hover {
+  box-shadow: var(--card-shadow-hover);
+  transform: translateY(-3px);
+}
+
+.screenshot-card {
+  background: #1E2A3A;
+  border-radius: 16px;
+  padding: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 420px;
+  position: relative;
+  overflow: hidden;
+}
+.screenshot-card::before {
+  content: '';
+  position: absolute;
+  top: 16px; left: 20px;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: #FF5F57;
+  box-shadow: 18px 0 0 #FFBD2E, 36px 0 0 #28CA42;
+}
+.screenshot-card .placeholder-text {
+  color: rgba(255,255,255,0.5);
+  font-size: 18px;
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  text-align: center;
+  line-height: 2;
+}
+.screenshot-card .placeholder-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.4;
+}
+
+/* ==================== SLIDE-SPECIFIC STYLES ==================== */
+
+/* Slide 1: Cover */
+.slide-cover {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(170deg, var(--white) 0%, #F0F4F8 100%);
+}
+.cover-content {
+  text-align: center;
+}
+.cover-logo {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 96px;
+  font-weight: 700;
+  color: var(--primary);
+  letter-spacing: 4px;
+  margin-bottom: 8px;
+}
+.cover-subtitle {
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-size: 52px;
+  font-weight: 700;
+  color: var(--primary);
+  letter-spacing: 12px;
+  margin-bottom: 24px;
+}
+.cover-tagline {
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-size: 22px;
+  font-weight: 300;
+  color: var(--text-body);
+  letter-spacing: 2px;
+  margin-bottom: 40px;
+}
+.cover-gold-line {
+  width: 120px;
+  height: 3px;
+  background: var(--accent);
+  margin: 0 auto;
+  animation: drawLine 1s ease 0.8s forwards;
+  width: 0;
+}
+.slide.play-anim .cover-gold-line {
+  animation: drawLine 1s ease 0.8s forwards;
+}
+.cover-version {
+  font-family: 'Segoe UI', -apple-system, sans-serif;
+  font-size: 14px;
+  color: var(--text-light);
+  margin-top: 40px;
+  letter-spacing: 2px;
+}
+
+/* Section title header bar */
+.slide-header {
+  padding: 60px 100px 0;
+}
+.slide-header .label-text {
+  margin-bottom: 12px;
+}
+
+/* Two-column layout */
+.two-col {
+  display: flex;
+  gap: 60px;
+  padding: 0 100px;
+  flex: 1;
+  align-items: center;
+}
+.two-col .col-text {
+  flex: 1;
+}
+.two-col .col-visual {
+  flex: 1.1;
+}
+
+/* Pain point cards grid */
+.pain-grid {
+  display: flex;
+  gap: 28px;
+  padding: 0 80px;
+  margin-top: 60px;
+}
+.pain-card {
+  flex: 1;
+  background: var(--white);
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
+  padding: 40px 30px;
+  text-align: center;
+  border-top: 3px solid transparent;
+  transition: all 0.3s ease;
+}
+.pain-card:hover {
+  border-top-color: var(--accent);
+  transform: translateY(-4px);
+  box-shadow: var(--card-shadow-hover);
+}
+.pain-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(10,61,107,0.08), rgba(27,108,168,0.08));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  font-size: 28px;
+}
+.pain-card h3 {
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 12px;
+}
+.pain-card p {
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-size: 15px;
+  color: var(--text-body);
+  line-height: 1.7;
+}
+
+/* Architecture diagram (Slide 3) */
+.arch-container {
+  padding: 0 80px;
+  margin-top: 20px;
+}
+.arch-layer {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.arch-label {
+  width: 100px;
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--accent);
+  text-align: right;
+  padding-right: 20px;
+  flex-shrink: 0;
+}
+.arch-boxes {
+  display: flex;
+  gap: 12px;
+  flex: 1;
+}
+.arch-box {
+  flex: 1;
+  padding: 16px 12px;
+  border-radius: 8px;
+  text-align: center;
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  transition: transform 0.2s ease;
+}
+.arch-box:hover { transform: translateY(-2px); }
+.arch-box.layer-user {
+  background: linear-gradient(135deg, #E8F0FE, #D4E4F7);
+  color: var(--primary);
+  border: 1px solid rgba(10,61,107,0.15);
+}
+.arch-box.layer-app {
+  background: linear-gradient(135deg, var(--secondary), #2980B9);
+  color: var(--white);
+}
+.arch-box.layer-ai {
+  background: linear-gradient(135deg, var(--primary), #0D4A7A);
+  color: var(--white);
+}
+.arch-box.layer-data {
+  background: linear-gradient(135deg, #2C3E50, #34495E);
+  color: var(--white);
+}
+.arch-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  margin: 8px 0 8px 100px;
+}
+.arch-connectors {
+  margin-left: 100px;
+  display: flex;
+  justify-content: center;
+  padding: 4px 0;
+}
+.arch-arrow {
+  color: var(--accent);
+  font-size: 16px;
+  letter-spacing: 40px;
+}
+
+/* Tech stack (Slide 9) */
+.tech-stack {
+  display: flex;
+  gap: 20px;
+  padding: 0 80px;
+  margin-top: 40px;
+}
+.tech-item {
+  flex: 1;
+  background: var(--white);
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
+  padding: 32px 24px;
+  text-align: center;
+  border-bottom: 3px solid var(--accent);
+  transition: transform 0.3s ease;
+}
+.tech-item:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--card-shadow-hover);
+}
+.tech-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(10,61,107,0.1), rgba(27,108,168,0.1));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  font-size: 24px;
+}
+.tech-item h3 {
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 10px;
+}
+.tech-item p {
+  font-family: 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-size: 14px;
+  color: var(--text-body);
+  line-height: 1.6;
+}
+
+/* Role columns (Slide 10) */
+.role-grid {
+  display: flex;
+  gap: 36px;
+  padding: 0 100px;
+  margin-top: 50px;
+}
+.role-card {
+  flex: 1;
+  background: var(--white);
+  border-radius: 16px;
+  box-shadow: var(--card-shadow);
+  padding: 48px 36px;
+  text-align: center;
+  border-top: 4px solid transparent;
+  transition: all 0.3s ease;
+}
+.role-card:hover {
+  border-top-color: var(--accent);
+  transform: translateY(-4px);
+  box-shadow: var(--card-shadow-hover);
+}
+.role-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  font-size: 32px;
+  color: var(--white);
+}
+.role-card h3 {
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 8px;
+}
+.role-card .role-label {
+  font-family: 'Segoe UI', -apple-system, sans-serif;
+  font-size: 13px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 20px;
+}
+.role-card ul {
+  list-style: none;
+  text-align: left;
+  padding: 0;
+}
+.role-card li {
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-size: 16px;
+  color: var(--text-body);
+  line-height: 1.8;
+  padding-left: 20px;
+  position: relative;
+}
+.role-card li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 11px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* Metric cards (Slide 11) */
+.metric-grid {
+  display: flex;
+  gap: 28px;
+  padding: 0 80px;
+  margin-top: 60px;
+}
+.metric-card {
+  flex: 1;
+  background: var(--white);
+  border-radius: 16px;
+  box-shadow: var(--card-shadow);
+  padding: 48px 24px;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+.metric-card:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--card-shadow-hover);
+}
+.metric-number {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 72px;
+  font-weight: 700;
+  color: var(--secondary);
+  line-height: 1;
+  margin-bottom: 8px;
+}
+.metric-label {
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-dark);
+}
+.metric-accent {
+  width: 40px;
+  height: 3px;
+  background: var(--accent);
+  margin: 16px auto 0;
+}
+
+/* Scenario cards (Slide 12) */
+.scenario-grid {
+  display: flex;
+  gap: 28px;
+  padding: 0 80px;
+  margin-top: 50px;
+}
+.scenario-card {
+  flex: 1;
+  background: var(--white);
+  border-radius: 16px;
+  box-shadow: var(--card-shadow);
+  padding: 40px 32px;
+  border-left: 4px solid var(--accent);
+  transition: all 0.3s ease;
+}
+.scenario-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--card-shadow-hover);
+}
+.scenario-num {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 48px;
+  font-weight: 700;
+  color: rgba(10,61,107,0.12);
+  margin-bottom: 12px;
+}
+.scenario-card h3 {
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 16px;
+}
+.scenario-card p {
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-size: 16px;
+  color: var(--text-body);
+  line-height: 1.8;
+}
+
+/* Timeline (Slide 13) */
+.timeline-container {
+  padding: 0 100px;
+  margin-top: 60px;
+  position: relative;
+}
+.timeline-line {
+  position: absolute;
+  top: 42px;
+  left: 160px;
+  right: 160px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--secondary));
+  border-radius: 2px;
+}
+.timeline-items {
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+}
+.timeline-item {
+  flex: 1;
+  text-align: center;
+  padding: 0 16px;
+  position: relative;
+}
+.timeline-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 4px solid var(--white);
+  box-shadow: 0 0 0 3px var(--accent);
+  margin: 32px auto 28px;
+  position: relative;
+  z-index: 2;
+}
+.timeline-phase {
+  font-family: 'Segoe UI', -apple-system, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 4px;
+}
+.timeline-time {
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-size: 14px;
+  color: var(--text-light);
+  margin-bottom: 20px;
+}
+.timeline-card {
+  background: var(--white);
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
+  padding: 24px 20px;
+  transition: all 0.3s ease;
+}
+.timeline-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--card-shadow-hover);
+}
+.timeline-card h4 {
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 10px;
+}
+.timeline-card p {
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-size: 14px;
+  color: var(--text-body);
+  line-height: 1.7;
+}
+
+/* Slide 14: Ending */
+.slide-ending {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(170deg, var(--white) 0%, #F0F4F8 100%);
+}
+.ending-content {
+  text-align: center;
+}
+.ending-logo {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 80px;
+  font-weight: 700;
+  color: var(--primary);
+  letter-spacing: 4px;
+  margin-bottom: 20px;
+}
+.ending-tagline {
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-size: 32px;
+  font-weight: 300;
+  color: var(--text-dark);
+  letter-spacing: 4px;
+  margin-bottom: 50px;
+}
+.ending-contact {
+  display: inline-block;
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-size: 16px;
+  color: var(--white);
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  padding: 14px 48px;
+  border-radius: 40px;
+  letter-spacing: 3px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border: none;
+}
+.ending-contact:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(10,61,107,0.25);
+}
+
+/* Content list */
+.content-list {
+  list-style: none;
+  padding: 0;
+  margin: 24px 0;
+}
+.content-list li {
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-size: 18px;
+  color: var(--text-body);
+  line-height: 1.8;
+  padding: 10px 0 10px 28px;
+  position: relative;
+}
+.content-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 18px;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--accent);
+  transform: rotate(45deg);
+}
+
+/* Slide background variations */
+.slide-light {
+  background: linear-gradient(180deg, var(--white) 0%, var(--light-bg) 100%);
+}
+
+/* Nav hint */
+.nav-hint {
+  position: fixed;
+  bottom: 50px;
+  right: 40px;
+  font-family: 'Segoe UI', -apple-system, sans-serif;
+  font-size: 12px;
+  color: rgba(255,255,255,0.5);
+  z-index: 1000;
+  letter-spacing: 1px;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Accent tag for slide numbers */
+.slide-tag {
+  display: inline-block;
+  font-family: 'Segoe UI', -apple-system, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+/* Cover side decorations */
+.cover-deco-left, .cover-deco-right {
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  border: 2px solid rgba(201,169,110,0.15);
+  border-radius: 50%;
+}
+.cover-deco-left {
+  top: -60px;
+  left: -60px;
+}
+.cover-deco-right {
+  bottom: -80px;
+  right: -80px;
+}
+
+/* Subtle grid pattern for dark cards */
+.screenshot-card .grid-bg {
+  position: absolute;
+  inset: 40px 0 0 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 30px 30px;
+}
+</style>
+</head>
+<body>
+
+<div class="slide-container" id="slideContainer">
+
+  <!-- ===================== SLIDE 1: COVER ===================== -->
+  <div class="slide slide-cover active" data-slide="1">
+    <div class="cover-deco-left"></div>
+    <div class="cover-deco-right"></div>
+    <div class="cover-content">
+      <div class="cover-logo anim-fade-up delay-1 heading-en">IntelliBanker</div>
+      <div class="cover-subtitle anim-fade-up delay-2">智能营销平台</div>
+      <div class="cover-gold-line anim-fade delay-3"></div>
+      <div class="cover-tagline anim-fade-up delay-4">AI驱动的客户经营与拜访管理全流程解决方案</div>
+      <div class="cover-version anim-fade delay-5">V1.0 &nbsp;|&nbsp; Solution Overview</div>
+    </div>
+    <div class="slide-bottom-line"></div>
+    <div class="page-number">01 / 14</div>
+  </div>
+
+  <!-- ===================== SLIDE 2: PAIN POINTS ===================== -->
+  <div class="slide slide-light" data-slide="2">
+    <div class="slide-header">
+      <div class="slide-tag anim-fade-up delay-1">CHALLENGES</div>
+      <h2 class="heading-primary anim-fade-up delay-2">对公客户经理面临的挑战</h2>
+    </div>
+    <div class="pain-grid" style="flex:1; align-items:center;">
+      <div class="pain-card anim-fade-up delay-2">
+        <div class="pain-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0A3D6B" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.32 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </div>
+        <h3>客户信息分散</h3>
+        <p>多系统切换，数据孤岛严重<br>客户全景难获取</p>
+      </div>
+      <div class="pain-card anim-fade-up delay-3">
+        <div class="pain-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0A3D6B" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+        </div>
+        <h3>营销策略粗放</h3>
+        <p>缺乏精准画像，千人一面营销<br>转化率低</p>
+      </div>
+      <div class="pain-card anim-fade-up delay-4">
+        <div class="pain-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0A3D6B" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        </div>
+        <h3>拜访管理低效</h3>
+        <p>纸质记录为主，过程不可追溯<br>经验难沉淀</p>
+      </div>
+      <div class="pain-card anim-fade-up delay-5">
+        <div class="pain-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0A3D6B" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <h3>风险预警滞后</h3>
+        <p>客户流失信号捕捉不及时<br>挽回窗口期短</p>
+      </div>
+    </div>
+    <div class="slide-bottom-line"></div>
+    <div class="page-number">02 / 14</div>
+  </div>
+
+  <!-- ===================== SLIDE 3: SOLUTION OVERVIEW ===================== -->
+  <div class="slide" data-slide="3">
+    <div class="slide-header">
+      <div class="slide-tag anim-fade-up delay-1">SOLUTION</div>
+      <h2 class="heading-primary anim-fade-up delay-2">IntelliBanker — 您的智能贴身助手</h2>
+      <p class="subheading anim-fade-up delay-3" style="margin-top:8px;">AI赋能客户经理，实现从洞察到执行的全链路智能化</p>
+    </div>
+    <div class="arch-container" style="flex:1; display:flex; flex-direction:column; justify-content:center;">
+      <!-- User Layer -->
+      <div class="arch-layer anim-fade-up delay-3">
+        <div class="arch-label">用户层</div>
+        <div class="arch-boxes">
+          <div class="arch-box layer-user">管理员</div>
+          <div class="arch-box layer-user">分行行长</div>
+          <div class="arch-box layer-user">客户经理</div>
+        </div>
+      </div>
+      <div class="arch-divider anim-fade delay-4"></div>
+      <div class="arch-connectors anim-fade delay-4"><span style="color:var(--accent); font-size:18px;">&#9661;</span></div>
+      <!-- App Layer -->
+      <div class="arch-layer anim-fade-up delay-4">
+        <div class="arch-label">应用层</div>
+        <div class="arch-boxes">
+          <div class="arch-box layer-app">客户洞察</div>
+          <div class="arch-box layer-app">客户画像</div>
+          <div class="arch-box layer-app">事件引擎</div>
+          <div class="arch-box layer-app">拜访管理</div>
+          <div class="arch-box layer-app">智能助手</div>
+          <div class="arch-box layer-app">客群报告</div>
+        </div>
+      </div>
+      <div class="arch-divider anim-fade delay-5"></div>
+      <div class="arch-connectors anim-fade delay-5"><span style="color:var(--accent); font-size:18px;">&#9661;</span></div>
+      <!-- AI Layer -->
+      <div class="arch-layer anim-fade-up delay-5">
+        <div class="arch-label">能力层</div>
+        <div class="arch-boxes">
+          <div class="arch-box layer-ai">DeepSeek 大模型</div>
+          <div class="arch-box layer-ai">数据引擎</div>
+          <div class="arch-box layer-ai">规则引擎</div>
+        </div>
+      </div>
+      <div class="arch-divider anim-fade delay-6"></div>
+      <div class="arch-connectors anim-fade delay-6"><span style="color:var(--accent); font-size:18px;">&#9661;</span></div>
+      <!-- Data Layer -->
+      <div class="arch-layer anim-fade-up delay-6">
+        <div class="arch-label">数据层</div>
+        <div class="arch-boxes">
+          <div class="arch-box layer-data">客户数据</div>
+          <div class="arch-box layer-data">产品数据</div>
+          <div class="arch-box layer-data">行为数据</div>
+          <div class="arch-box layer-data">外部数据</div>
+        </div>
+      </div>
+    </div>
+    <div class="slide-bottom-line"></div>
+    <div class="page-number">03 / 14</div>
+  </div>
+
+  <!-- ===================== SLIDE 4: 客户洞察 ===================== -->
+  <div class="slide slide-light" data-slide="4">
+    <div class="slide-header">
+      <div class="slide-tag anim-fade-up delay-1">CORE CAPABILITY 01</div>
+      <h2 class="heading-primary anim-fade-up delay-2">客户洞察报告</h2>
+    </div>
+    <div class="two-col">
+      <div class="col-text anim-slide-left delay-3">
+        <div class="gold-line-left" style="margin-bottom:28px;"></div>
+        <ul class="content-list">
+          <li>基于客户多维数据，AI自动生成深度洞察报告</li>
+          <li>涵盖资产分析、风险评估、需求预测、行动建议</li>
+          <li>帮助客户经理在拜访前快速了解客户全貌</li>
+        </ul>
+        <p class="body-text" style="margin-top:24px; font-size:16px; color:var(--text-light);">一站式获取客户全景视图，让每次拜访都有备而来</p>
+      </div>
+      <div class="col-visual anim-slide-right delay-4">
+        <div class="screenshot-card">
+          <div class="grid-bg"></div>
+          <div style="position:relative; z-index:1;">
+            <div class="placeholder-icon">&#128202;</div>
+            <div class="placeholder-text">截图占位 — 客户洞察页面<br><span style="font-size:14px; opacity:0.6;">替换为实际产品截图</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="slide-bottom-line"></div>
+    <div class="page-number">04 / 14</div>
+  </div>
+
+  <!-- ===================== SLIDE 5: 客户画像 ===================== -->
+  <div class="slide" data-slide="5">
+    <div class="slide-header">
+      <div class="slide-tag anim-fade-up delay-1">CORE CAPABILITY 02</div>
+      <h2 class="heading-primary anim-fade-up delay-2">多维客户画像</h2>
+    </div>
+    <div class="two-col">
+      <div class="col-text anim-slide-left delay-3">
+        <div class="gold-line-left" style="margin-bottom:28px;"></div>
+        <ul class="content-list">
+          <li>资产等级、风险偏好、生命周期、行业分类等多维度标签</li>
+          <li>可视化呈现客户特征，支持筛选和对比分析</li>
+          <li>为精准营销提供数据基础</li>
+        </ul>
+        <p class="body-text" style="margin-top:24px; font-size:16px; color:var(--text-light);">360度客户画像，精准识别每一位客户的独特需求</p>
+      </div>
+      <div class="col-visual anim-slide-right delay-4">
+        <div class="screenshot-card">
+          <div class="grid-bg"></div>
+          <div style="position:relative; z-index:1;">
+            <div class="placeholder-icon">&#128100;</div>
+            <div class="placeholder-text">截图占位 — 客户画像页面<br><span style="font-size:14px; opacity:0.6;">替换为实际产品截图</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="slide-bottom-line"></div>
+    <div class="page-number">05 / 14</div>
+  </div>
+
+  <!-- ===================== SLIDE 6: 事件引擎 ===================== -->
+  <div class="slide slide-light" data-slide="6">
+    <div class="slide-header">
+      <div class="slide-tag anim-fade-up delay-1">CORE CAPABILITY 03</div>
+      <h2 class="heading-primary anim-fade-up delay-2">事件驱动营销引擎</h2>
+    </div>
+    <div class="two-col">
+      <div class="col-text anim-slide-left delay-3">
+        <div class="gold-line-left" style="margin-bottom:28px;"></div>
+        <ul class="content-list">
+          <li>实时监控客户行为事件（大额转账、到期提醒、异常波动）</li>
+          <li>自动触发营销任务推荐，把握最佳触达时机</li>
+          <li>从被动响应到主动经营的转变</li>
+        </ul>
+        <p class="body-text" style="margin-top:24px; font-size:16px; color:var(--text-light);">事件驱动，让营销从"大海捞针"变为"精准狙击"</p>
+      </div>
+      <div class="col-visual anim-slide-right delay-4">
+        <div class="screenshot-card">
+          <div class="grid-bg"></div>
+          <div style="position:relative; z-index:1;">
+            <div class="placeholder-icon">&#9889;</div>
+            <div class="placeholder-text">截图占位 — 事件引擎页面<br><span style="font-size:14px; opacity:0.6;">替换为实际产品截图</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="slide-bottom-line"></div>
+    <div class="page-number">06 / 14</div>
+  </div>
+
+  <!-- ===================== SLIDE 7: 拜访管理 ===================== -->
+  <div class="slide" data-slide="7">
+    <div class="slide-header">
+      <div class="slide-tag anim-fade-up delay-1">CORE CAPABILITY 04</div>
+      <h2 class="heading-primary anim-fade-up delay-2">拜访流程数字化</h2>
+    </div>
+    <div class="two-col">
+      <div class="col-text anim-slide-left delay-3">
+        <div class="gold-line-left" style="margin-bottom:28px;"></div>
+        <ul class="content-list">
+          <li>拜访计划、执行记录、结果跟踪全流程在线化</li>
+          <li>结构化记录拜访内容，支持复盘与经验沉淀</li>
+          <li>管理层可实时查看团队拜访状态</li>
+        </ul>
+        <p class="body-text" style="margin-top:24px; font-size:16px; color:var(--text-light);">从纸质到数字，每一次拜访都可追溯、可衡量</p>
+      </div>
+      <div class="col-visual anim-slide-right delay-4">
+        <div class="screenshot-card">
+          <div class="grid-bg"></div>
+          <div style="position:relative; z-index:1;">
+            <div class="placeholder-icon">&#128203;</div>
+            <div class="placeholder-text">截图占位 — 拜访管理页面<br><span style="font-size:14px; opacity:0.6;">替换为实际产品截图</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="slide-bottom-line"></div>
+    <div class="page-number">07 / 14</div>
+  </div>
+
+  <!-- ===================== SLIDE 8: 智能助手 ===================== -->
+  <div class="slide slide-light" data-slide="8">
+    <div class="slide-header">
+      <div class="slide-tag anim-fade-up delay-1">CORE CAPABILITY 05</div>
+      <h2 class="heading-primary anim-fade-up delay-2">AI智能助手</h2>
+    </div>
+    <div class="two-col">
+      <div class="col-text anim-slide-left delay-3">
+        <div class="gold-line-left" style="margin-bottom:28px;"></div>
+        <ul class="content-list">
+          <li>基于DeepSeek大模型的对话式智能助手</li>
+          <li>支持客户问答、策略建议、话术生成</li>
+          <li>降低专业门槛，提升服务一致性</li>
+        </ul>
+        <p class="body-text" style="margin-top:24px; font-size:16px; color:var(--text-light);">AI赋能每一位客户经理，让专业服务不再有门槛</p>
+      </div>
+      <div class="col-visual anim-slide-right delay-4">
+        <div class="screenshot-card">
+          <div class="grid-bg"></div>
+          <div style="position:relative; z-index:1;">
+            <div class="placeholder-icon">&#129302;</div>
+            <div class="placeholder-text">截图占位 — AI智能助手页面<br><span style="font-size:14px; opacity:0.6;">替换为实际产品截图</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="slide-bottom-line"></div>
+    <div class="page-number">08 / 14</div>
+  </div>
+
+  <!-- ===================== SLIDE 9: TECH ARCHITECTURE ===================== -->
+  <div class="slide" data-slide="9">
+    <div class="slide-header">
+      <div class="slide-tag anim-fade-up delay-1">ARCHITECTURE</div>
+      <h2 class="heading-primary anim-fade-up delay-2">技术架构</h2>
+    </div>
+    <div class="tech-stack" style="flex:1; align-items:center;">
+      <div class="tech-item anim-fade-up delay-2">
+        <div class="tech-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0A3D6B" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        </div>
+        <h3>前端层</h3>
+        <p>React 18<br>Arco Design<br>ECharts</p>
+      </div>
+      <div class="tech-item anim-fade-up delay-3">
+        <div class="tech-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0A3D6B" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        </div>
+        <h3>后端层</h3>
+        <p>Python 3.9<br>FastAPI<br>Pydantic</p>
+      </div>
+      <div class="tech-item anim-fade-up delay-4">
+        <div class="tech-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0A3D6B" stroke-width="2"><path d="M12 2a4 4 0 0 1 4 4c0 1.95-2 4-4 6-2-2-4-4.05-4-6a4 4 0 0 1 4-4z"/><circle cx="12" cy="14" r="3"/><path d="M16.24 17.76a6 6 0 0 1-8.49 0"/></svg>
+        </div>
+        <h3>AI能力层</h3>
+        <p>DeepSeek 大模型<br>OpenAI 兼容协议</p>
+      </div>
+      <div class="tech-item anim-fade-up delay-5">
+        <div class="tech-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0A3D6B" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+        </div>
+        <h3>数据层</h3>
+        <p>SQLite<br>操作审计日志</p>
+      </div>
+      <div class="tech-item anim-fade-up delay-6">
+        <div class="tech-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0A3D6B" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <h3>安全层</h3>
+        <p>角色权限控制<br>管理员 / 分行行长 / 客户经理</p>
+      </div>
+    </div>
+    <div style="padding: 0 100px; margin-top: 20px; margin-bottom: 80px;">
+      <div style="display:flex; align-items:center; justify-content:center; gap:0;">
+        <div class="anim-fade delay-7" style="flex:1; height:2px; background: linear-gradient(90deg, transparent, var(--accent));"></div>
+        <div class="anim-fade delay-7" style="padding: 0 20px; font-family:'Microsoft YaHei', sans-serif; font-size:14px; color:var(--accent); white-space:nowrap;">全链路技术保障 &middot; 安全可靠 &middot; 高性能</div>
+        <div class="anim-fade delay-7" style="flex:1; height:2px; background: linear-gradient(90deg, var(--accent), transparent);"></div>
+      </div>
+    </div>
+    <div class="slide-bottom-line"></div>
+    <div class="page-number">09 / 14</div>
+  </div>
+
+  <!-- ===================== SLIDE 10: ROLES ===================== -->
+  <div class="slide slide-light" data-slide="10">
+    <div class="slide-header">
+      <div class="slide-tag anim-fade-up delay-1">ROLES</div>
+      <h2 class="heading-primary anim-fade-up delay-2">多角色协同</h2>
+    </div>
+    <div class="role-grid" style="flex:1; align-items:center;">
+      <div class="role-card anim-fade-up delay-3">
+        <div class="role-avatar">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        </div>
+        <h3>管理员</h3>
+        <div class="role-label">ADMINISTRATOR</div>
+        <ul>
+          <li>全行视角总览</li>
+          <li>数据全局管理</li>
+          <li>策略统一配置</li>
+          <li>系统运维管理</li>
+        </ul>
+      </div>
+      <div class="role-card anim-fade-up delay-4">
+        <div class="role-avatar" style="background: linear-gradient(135deg, var(--secondary), #3498DB);">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <h3>分行行长</h3>
+        <div class="role-label">BRANCH MANAGER</div>
+        <ul>
+          <li>支行视角管理</li>
+          <li>团队绩效跟踪</li>
+          <li>客群分析决策</li>
+          <li>差异化经营策略</li>
+        </ul>
+      </div>
+      <div class="role-card anim-fade-up delay-5">
+        <div class="role-avatar" style="background: linear-gradient(135deg, #2C3E50, #4A6FA5);">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <h3>客户经理</h3>
+        <div class="role-label">RELATIONSHIP MANAGER</div>
+        <ul>
+          <li>个人客户经营</li>
+          <li>日常拜访管理</li>
+          <li>AI助手赋能</li>
+          <li>精准营销执行</li>
+        </ul>
+      </div>
+    </div>
+    <div class="slide-bottom-line"></div>
+    <div class="page-number">10 / 14</div>
+  </div>
+
+  <!-- ===================== SLIDE 11: VALUE ===================== -->
+  <div class="slide" data-slide="11">
+    <div class="slide-header">
+      <div class="slide-tag anim-fade-up delay-1">VALUE</div>
+      <h2 class="heading-primary anim-fade-up delay-2">核心价值</h2>
+    </div>
+    <div class="metric-grid" style="flex:1; align-items:center;">
+      <div class="metric-card anim-fade-up delay-2">
+        <div class="metric-number">3x</div>
+        <div class="metric-label">客户洞察效率提升</div>
+        <div class="metric-accent"></div>
+      </div>
+      <div class="metric-card anim-fade-up delay-3">
+        <div class="metric-number">40%</div>
+        <div class="metric-label">营销转化率提升</div>
+        <div class="metric-accent"></div>
+      </div>
+      <div class="metric-card anim-fade-up delay-4">
+        <div class="metric-number">60%</div>
+        <div class="metric-label">拜访管理效率提升</div>
+        <div class="metric-accent"></div>
+      </div>
+      <div class="metric-card anim-fade-up delay-5">
+        <div class="metric-number" style="font-size:52px;">实时</div>
+        <div class="metric-label">客户流失风险预警</div>
+        <div class="metric-accent"></div>
+      </div>
+    </div>
+    <div style="padding:0 100px; margin-bottom:100px;">
+      <div class="anim-fade delay-6" style="text-align:center;">
+        <span style="font-family:'Microsoft YaHei', sans-serif; font-size:16px; color:var(--text-light);">数据驱动决策 &middot; AI赋能一线 &middot; 全流程数字化</span>
+      </div>
+    </div>
+    <div class="slide-bottom-line"></div>
+    <div class="page-number">11 / 14</div>
+  </div>
+
+  <!-- ===================== SLIDE 12: SCENARIOS ===================== -->
+  <div class="slide slide-light" data-slide="12">
+    <div class="slide-header">
+      <div class="slide-tag anim-fade-up delay-1">SCENARIOS</div>
+      <h2 class="heading-primary anim-fade-up delay-2">典型应用场景</h2>
+    </div>
+    <div class="scenario-grid" style="flex:1; align-items:center;">
+      <div class="scenario-card anim-fade-up delay-3">
+        <div class="scenario-num">01</div>
+        <h3>拜访前准备</h3>
+        <p>客户经理通过AI洞察报告快速了解客户，生成个性化拜访方案，大幅提升拜访质量和效率</p>
+      </div>
+      <div class="scenario-card anim-fade-up delay-4">
+        <div class="scenario-num">02</div>
+        <h3>精准营销触达</h3>
+        <p>事件引擎捕捉客户行为信号，自动推荐营销时机和话术，实现千人千面的精准营销</p>
+      </div>
+      <div class="scenario-card anim-fade-up delay-5">
+        <div class="scenario-num">03</div>
+        <h3>管理层决策</h3>
+        <p>分行行长通过客群报告掌握全貌，制定差异化经营策略，数据驱动科学管理</p>
+      </div>
+    </div>
+    <div class="slide-bottom-line"></div>
+    <div class="page-number">12 / 14</div>
+  </div>
+
+  <!-- ===================== SLIDE 13: TIMELINE ===================== -->
+  <div class="slide" data-slide="13">
+    <div class="slide-header">
+      <div class="slide-tag anim-fade-up delay-1">IMPLEMENTATION</div>
+      <h2 class="heading-primary anim-fade-up delay-2">分阶段实施路径</h2>
+    </div>
+    <div class="timeline-container" style="flex:1; display:flex; flex-direction:column; justify-content:center;">
+      <div class="timeline-line anim-fade delay-3"></div>
+      <div class="timeline-items">
+        <div class="timeline-item anim-fade-up delay-3">
+          <div class="timeline-phase">PHASE 1</div>
+          <div class="timeline-time">1-2 周</div>
+          <div class="timeline-dot"></div>
+          <div class="timeline-card">
+            <h4>数据接入与系统部署</h4>
+            <p>完成核心数据接入<br>系统环境搭建与部署<br>基础功能验证</p>
+          </div>
+        </div>
+        <div class="timeline-item anim-fade-up delay-4">
+          <div class="timeline-phase">PHASE 2</div>
+          <div class="timeline-time">2-4 周</div>
+          <div class="timeline-dot"></div>
+          <div class="timeline-card">
+            <h4>核心功能上线</h4>
+            <p>客户画像 + 洞察报告<br>拜访管理全流程<br>基础角色权限配置</p>
+          </div>
+        </div>
+        <div class="timeline-item anim-fade-up delay-5">
+          <div class="timeline-phase">PHASE 3</div>
+          <div class="timeline-time">4-6 周</div>
+          <div class="timeline-dot"></div>
+          <div class="timeline-card">
+            <h4>AI能力深化</h4>
+            <p>事件引擎上线<br>智能助手集成<br>营销自动化流程</p>
+          </div>
+        </div>
+        <div class="timeline-item anim-fade-up delay-6">
+          <div class="timeline-phase">PHASE 4</div>
+          <div class="timeline-time">持续迭代</div>
+          <div class="timeline-dot"></div>
+          <div class="timeline-card">
+            <h4>持续优化与扩展</h4>
+            <p>基于反馈持续优化<br>新场景功能扩展<br>数据模型迭代升级</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="slide-bottom-line"></div>
+    <div class="page-number">13 / 14</div>
+  </div>
+
+  <!-- ===================== SLIDE 14: ENDING ===================== -->
+  <div class="slide slide-ending" data-slide="14">
+    <div class="cover-deco-left"></div>
+    <div class="cover-deco-right"></div>
+    <div class="ending-content">
+      <div class="ending-logo anim-fade-up delay-1 heading-en">IntelliBanker</div>
+      <div class="anim-fade delay-2" style="width:120px; height:3px; background:var(--accent); margin:0 auto 32px;"></div>
+      <div class="ending-tagline anim-fade-up delay-3">以AI驱动客户经营，以数据赋能一线决策</div>
+      <div class="anim-fade-up delay-4">
+        <button class="ending-contact">联系方式 &nbsp;|&nbsp; 演示申请</button>
+      </div>
+    </div>
+    <div class="slide-bottom-line"></div>
+    <div class="page-number">14 / 14</div>
+  </div>
+
+</div>
+
+<!-- Navigation Dots -->
+<div class="nav-dots" id="navDots"></div>
+
+<!-- Keyboard Hint -->
+<div class="nav-hint">← → 键盘导航</div>
+
+<script>
+var SS = { total: 14, current: 1 };
+SS.go = function(n) {
+  if (n < 1 || n > SS.total || n === SS.current) return;
+  var a = document.querySelectorAll('.slide');
+  for (var i = 0; i < a.length; i++) {
+    a[i].classList.remove('active');
+    a[i].classList.remove('play-anim');
+    a[i].style.display = 'none';
+  }
+  var target = a[n - 1];
+  target.classList.add('active');
+  target.style.display = 'flex';
+  setTimeout(function() { target.classList.add('play-anim'); }, 20);
+  setTimeout(function() { target.classList.remove('play-anim'); }, 2500);
+  SS.current = n;
+  var d = document.querySelectorAll('.nav-dot');
+  for (var i = 0; i < d.length; i++) d[i].className = 'nav-dot' + (i === n - 1 ? ' active' : '');
+};
+(function() {
+  var c = document.getElementById('slideContainer');
+  function sc() {
+    var s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+    c.style.transform = 'translate(' + ((window.innerWidth - 1920 * s) / 2) + 'px,' + ((window.innerHeight - 1080 * s) / 2) + 'px) scale(' + s + ')';
+  }
+  sc();
+  window.onresize = sc;
+  var nd = document.getElementById('navDots');
+  for (var i = 1; i <= SS.total; i++) {
+    var d = document.createElement('div');
+    d.className = 'nav-dot' + (i === 1 ? ' active' : '');
+    d.onclick = (function(x) { return function() { SS.go(x); }; })(i);
+    nd.appendChild(d);
+  }
+  document.body.onkeydown = function(e) {
+    var code = e.keyCode;
+    if (code === 39 || code === 40 || code === 32) { e.preventDefault(); SS.go(SS.current + 1); }
+    else if (code === 37 || code === 38) { e.preventDefault(); SS.go(SS.current - 1); }
+    else if (code === 36) { e.preventDefault(); SS.go(1); }
+    else if (code === 35) { e.preventDefault(); SS.go(SS.total); }
+  };
+  document.body.onclick = function(e) {
+    if (e.target && e.target.className && e.target.className.indexOf('nav-dot') >= 0) return;
+    if (e.target && e.target.tagName === 'BUTTON') return;
+    SS.go(e.clientX < window.innerWidth / 2 ? SS.current - 1 : SS.current + 1);
+  };
+  // Init: ensure only first slide is visible
+  var all = document.querySelectorAll('.slide');
+  for (var i = 0; i < all.length; i++) {
+    if (i === 0) { all[i].style.display = 'flex'; }
+    else { all[i].style.display = 'none'; }
+  }
+  setTimeout(function() {
+    var first = document.querySelector('.slide.active');
+    if (first) first.classList.add('play-anim');
+  }, 100);
+})();
+</script>
+
+</body>
+</html>

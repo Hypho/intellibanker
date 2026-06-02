@@ -263,7 +263,7 @@ sequenceDiagram
     App->>App: setRole(null)
     App-->>User: 返回角色选择页
 
-    Note over App: Demo模式: role仅前端state<br/>不持久化,刷新需重新选
+    Note over App: 演示模式: role仅前端state<br/>不持久化,刷新需重新选
 ```
 
 ---

@@ -73,7 +73,7 @@ export default function App() {
             size="large"
           />
           <div style={{ fontSize: 12, color: C.textDim }}>
-            Demo 模式 · 不同角色可查看不同数据范围
+            不同角色可查看不同数据范围
           </div>
         </Card>
       </div>

@@ -34,7 +34,7 @@
                      │
 ┌────────────────────▼────────────────────────────┐
 │                  数据层                          │
-│            mock_data.py (Demo 数据)              │
+│            mock_data.py (模拟数据)             │
 └─────────────────────────────────────────────────┘
 ```
 
@@ -50,7 +50,7 @@
 | HTTP 客户端 | httpx | 异步 HTTP，支持 OpenAI 兼容协议 |
 | 大模型 | DeepSeek deepseek-chat | OpenAI 兼容接口 |
 | 环境变量 | python-dotenv | 敏感配置管理 |
-| 数据 | mock_data.py | Demo 用内存数据，无真实数据库 |
+| 数据 | mock_data.py | 模拟数据，无真实数据库 |
 
 ---
 
@@ -407,7 +407,7 @@ npm run dev  # 访问 http://localhost:3000
 
 ---
 
-## 七、Demo 数据说明
+## 七、模拟数据说明
 
 `mock_data.py` 包含：
 

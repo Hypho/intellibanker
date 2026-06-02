@@ -21,7 +21,7 @@ async def lifespan(app):
 
 app = FastAPI(
     title="银行智能营销平台",
-    description="Demo API - 客户洞察 / 客户画像 / 业务流程自动化",
+    description="银行智能营销平台 API - 客户洞察 / 客户画像 / 业务流程自动化",
     version="1.0.0",
     lifespan=lifespan,
 )

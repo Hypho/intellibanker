@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>KeyTest</title></head>
+<body style="background:#0A3D6B;color:white;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
+<div style="text-align:center">
+  <h1>键盘测试</h1>
+  <p id="out" style="font-size:48px;margin:40px">按 ← → 试试</p>
+</div>
+<script>
+document.body.onkeydown = function(e) {
+  var c = e.keyCode;
+  var t = document.getElementById('out');
+  if (c === 39) t.innerHTML = '→ 右键 OK! (keyCode=39)';
+  else if (c === 37) t.innerHTML = '← 左键 OK! (keyCode=37)';
+  else t.innerHTML = 'keyCode = ' + c;
+};
+console.log('KeyTest loaded, onkeydown set');
+</script>
+</body>
+</html>

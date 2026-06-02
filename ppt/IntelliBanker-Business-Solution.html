@@ -1,0 +1,1461 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>IntelliBanker 智能营销平台业务方案</title>
+<style>
+  :root {
+    --ink: #142335;
+    --ink-2: #34465c;
+    --muted: #6f7f91;
+    --faint: #dce3ea;
+    --paper: #ffffff;
+    --wash: #f6f8fa;
+    --wash-2: #eef3f7;
+    --blue: #103a63;
+    --blue-2: #1e5b8f;
+    --gold: #b89246;
+    --gold-2: #d7bd7a;
+    --green: #287a61;
+    --red: #b84a4a;
+    --shadow: 0 24px 60px rgba(20, 35, 53, 0.12);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #e9edf2;
+    color: var(--ink);
+    font-family: "Aptos", "Segoe UI", "Microsoft YaHei", sans-serif;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background:
+      linear-gradient(90deg, rgba(16,58,99,0.04) 1px, transparent 1px),
+      linear-gradient(0deg, rgba(16,58,99,0.04) 1px, transparent 1px);
+    background-size: 28px 28px;
+    pointer-events: none;
+  }
+
+  .stage {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+  }
+
+  .deck {
+    width: 1920px;
+    height: 1080px;
+    position: relative;
+    transform-origin: top left;
+    filter: drop-shadow(0 30px 70px rgba(0,0,0,0.18));
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: none;
+    background: var(--paper);
+    overflow: hidden;
+    padding: 74px 94px 64px;
+  }
+
+  .slide.active {
+    display: block;
+    animation: enter 420ms ease both;
+  }
+
+  @keyframes enter {
+    from { opacity: 0; transform: translateY(16px) scale(0.992); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .slide::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(90deg, rgba(16,58,99,0.035) 1px, transparent 1px),
+      linear-gradient(0deg, rgba(16,58,99,0.028) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: linear-gradient(90deg, rgba(0,0,0,0.45), transparent 70%);
+    pointer-events: none;
+  }
+
+  .slide::after {
+    content: "";
+    position: absolute;
+    right: -180px;
+    top: 0;
+    width: 520px;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(16,58,99,0.035));
+    transform: skewX(-12deg);
+    pointer-events: none;
+  }
+
+  .topline {
+    position: absolute;
+    top: 32px;
+    left: 94px;
+    right: 94px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    color: var(--muted);
+    font-size: 15px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .topline .rule {
+    width: 112px;
+    height: 2px;
+    background: var(--gold);
+  }
+
+  .page {
+    position: absolute;
+    right: 94px;
+    bottom: 40px;
+    color: var(--muted);
+    font-size: 18px;
+    letter-spacing: 0.1em;
+  }
+
+  .title-row {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 42px;
+    align-items: end;
+    margin-bottom: 34px;
+  }
+
+  .kicker {
+    display: inline-flex;
+    align-items: center;
+    height: 26px;
+    padding-left: 15px;
+    border-left: 4px solid var(--gold);
+    color: var(--blue);
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  h1, h2, h3, p { margin: 0; }
+
+  h1 {
+    margin-top: 24px;
+    font-family: "Georgia", "Times New Roman", "Microsoft YaHei", serif;
+    font-size: 70px;
+    line-height: 1.04;
+    letter-spacing: 0;
+    color: var(--ink);
+    max-width: 1280px;
+  }
+
+  h2 {
+    margin-top: 18px;
+    font-family: "Georgia", "Times New Roman", "Microsoft YaHei", serif;
+    font-size: 52px;
+    line-height: 1.12;
+    letter-spacing: 0;
+    color: var(--ink);
+    max-width: 1260px;
+  }
+
+  .subtitle {
+    margin-top: 18px;
+    color: var(--ink-2);
+    font-size: 24px;
+    line-height: 1.55;
+    max-width: 1040px;
+  }
+
+  .claim-note {
+    width: 320px;
+    padding: 18px 20px;
+    border-top: 3px solid var(--gold);
+    background: linear-gradient(180deg, #fff, var(--wash));
+    color: var(--ink-2);
+    font-size: 18px;
+    line-height: 1.45;
+    box-shadow: 0 10px 24px rgba(20,35,53,0.06);
+  }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+  .grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px; }
+
+  .panel {
+    position: relative;
+    z-index: 1;
+    background: #fff;
+    border: 1px solid var(--faint);
+    padding: 26px 28px;
+    box-shadow: 0 12px 30px rgba(20,35,53,0.055);
+  }
+
+  .panel.compact { padding: 20px 22px; }
+  .panel.tint { background: linear-gradient(180deg, #fff, #f8fafc); }
+  .panel.dark {
+    background: var(--blue);
+    border-color: var(--blue);
+    color: #fff;
+    box-shadow: var(--shadow);
+  }
+
+  .panel h3 {
+    color: var(--blue);
+    font-size: 26px;
+    line-height: 1.25;
+    margin-bottom: 14px;
+  }
+
+  .panel.dark h3 { color: #fff; }
+
+  .panel p, .body {
+    color: var(--ink-2);
+    font-size: 20px;
+    line-height: 1.6;
+  }
+
+  .panel.dark p, .panel.dark .body { color: rgba(255,255,255,0.84); }
+
+  .bullets {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 10px;
+  }
+
+  .bullets li {
+    position: relative;
+    padding-left: 21px;
+    color: var(--ink-2);
+    font-size: 19px;
+    line-height: 1.42;
+  }
+
+  .bullets li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.68em;
+    width: 7px;
+    height: 7px;
+    background: var(--gold);
+    transform: rotate(45deg);
+  }
+
+  .panel.dark .bullets li { color: rgba(255,255,255,0.84); }
+
+  .metric {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .metric .value {
+    font-family: "Georgia", "Times New Roman", serif;
+    font-size: 42px;
+    line-height: 1;
+    color: var(--blue);
+  }
+
+  .metric .label {
+    color: var(--muted);
+    font-size: 17px;
+    line-height: 1.32;
+  }
+
+  .tagline {
+    display: inline-flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 0 12px;
+    border: 1px solid rgba(184,146,70,0.45);
+    background: rgba(184,146,70,0.08);
+    color: var(--blue);
+    font-weight: 700;
+    font-size: 16px;
+  }
+
+  .numbered {
+    display: grid;
+    gap: 16px;
+  }
+
+  .num-item {
+    display: grid;
+    grid-template-columns: 58px 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+
+  .num {
+    height: 48px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--gold);
+    color: var(--blue);
+    font-family: "Georgia", serif;
+    font-size: 23px;
+    background: #fffaf0;
+  }
+
+  .num-title {
+    color: var(--ink);
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1.25;
+  }
+
+  .num-copy {
+    margin-top: 5px;
+    color: var(--ink-2);
+    font-size: 18px;
+    line-height: 1.42;
+  }
+
+  .flow {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 14px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .flow::before {
+    content: "";
+    position: absolute;
+    left: 7%;
+    right: 7%;
+    top: 42px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--gold), var(--blue));
+    z-index: -1;
+  }
+
+  .flow-step {
+    background: #fff;
+    border: 1px solid var(--faint);
+    padding: 18px 16px 20px;
+    min-height: 190px;
+    box-shadow: 0 12px 24px rgba(20,35,53,0.045);
+  }
+
+  .flow-dot {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: var(--blue);
+    color: #fff;
+    display: grid;
+    place-items: center;
+    font-family: "Georgia", serif;
+    font-size: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 0 0 8px #fff;
+  }
+
+  .flow-step h3 {
+    font-size: 22px;
+    color: var(--blue);
+    margin-bottom: 10px;
+  }
+
+  .flow-step p {
+    color: var(--ink-2);
+    font-size: 17px;
+    line-height: 1.45;
+  }
+
+  .matrix {
+    display: grid;
+    border: 1px solid var(--faint);
+    background: #fff;
+  }
+
+  .matrix.five { grid-template-columns: 1.1fr repeat(4, 1fr); }
+  .matrix.four { grid-template-columns: 1.05fr repeat(3, 1fr); }
+  .cell {
+    min-height: 86px;
+    padding: 18px 20px;
+    border-right: 1px solid var(--faint);
+    border-bottom: 1px solid var(--faint);
+    font-size: 18px;
+    line-height: 1.4;
+    color: var(--ink-2);
+  }
+  .cell:nth-child(5n), .matrix.four .cell:nth-child(4n) { border-right: none; }
+  .cell.head {
+    background: var(--blue);
+    color: #fff;
+    font-weight: 800;
+  }
+  .cell.rowhead {
+    background: #f7f4ed;
+    color: var(--blue);
+    font-weight: 800;
+  }
+
+  .phone {
+    width: 400px;
+    height: 705px;
+    border: 12px solid #16283a;
+    border-radius: 44px;
+    background: #fff;
+    box-shadow: var(--shadow);
+    padding: 28px 24px;
+  }
+
+  .phone-bar {
+    height: 28px;
+    width: 128px;
+    background: #16283a;
+    border-radius: 0 0 16px 16px;
+    margin: -28px auto 26px;
+  }
+
+  .profile-head {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  .avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--blue), var(--blue-2));
+    color: #fff;
+    display: grid;
+    place-items: center;
+    font-size: 30px;
+    font-weight: 800;
+  }
+
+  .mini-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: center;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--faint);
+    color: var(--ink-2);
+    font-size: 17px;
+  }
+
+  .mini-row strong { color: var(--blue); }
+
+  .chart-bars {
+    display: flex;
+    align-items: end;
+    gap: 16px;
+    height: 210px;
+    padding: 24px 20px 0;
+    border-left: 1px solid var(--faint);
+    border-bottom: 1px solid var(--faint);
+  }
+
+  .bar {
+    flex: 1;
+    background: linear-gradient(180deg, var(--blue-2), var(--blue));
+    min-height: 18px;
+    position: relative;
+  }
+
+  .bar.gold { background: linear-gradient(180deg, var(--gold-2), var(--gold)); }
+  .bar span {
+    position: absolute;
+    left: 50%;
+    bottom: -28px;
+    transform: translateX(-50%);
+    color: var(--muted);
+    font-size: 14px;
+    white-space: nowrap;
+  }
+
+  .loop {
+    position: relative;
+    width: 760px;
+    height: 520px;
+    margin: 20px auto 0;
+  }
+
+  .loop-center {
+    position: absolute;
+    inset: 170px 245px;
+    display: grid;
+    place-items: center;
+    background: var(--blue);
+    color: #fff;
+    font-size: 28px;
+    font-weight: 800;
+    text-align: center;
+    line-height: 1.25;
+    box-shadow: var(--shadow);
+  }
+
+  .loop-node {
+    position: absolute;
+    width: 190px;
+    min-height: 96px;
+    background: #fff;
+    border: 1px solid var(--faint);
+    padding: 16px;
+    box-shadow: 0 12px 28px rgba(20,35,53,0.06);
+  }
+
+  .loop-node b { display: block; color: var(--blue); font-size: 20px; margin-bottom: 6px; }
+  .loop-node span { color: var(--ink-2); font-size: 15px; line-height: 1.35; }
+  .n1 { left: 285px; top: 0; }
+  .n2 { right: 0; top: 118px; }
+  .n3 { right: 66px; bottom: 0; }
+  .n4 { left: 66px; bottom: 0; }
+  .n5 { left: 0; top: 118px; }
+
+  .circle-line {
+    position: absolute;
+    inset: 58px 135px;
+    border: 2px solid rgba(184,146,70,0.7);
+    border-radius: 50%;
+  }
+
+  .roadmap {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    border: 1px solid var(--faint);
+  }
+
+  .phase {
+    min-height: 560px;
+    padding: 28px 24px;
+    border-right: 1px solid var(--faint);
+    background: linear-gradient(180deg, #fff, #f9fbfd);
+  }
+
+  .phase:last-child { border-right: 0; }
+  .phase .phase-num {
+    color: var(--gold);
+    font-family: "Georgia", serif;
+    font-size: 42px;
+    margin-bottom: 18px;
+  }
+  .phase h3 { color: var(--blue); font-size: 25px; margin-bottom: 18px; }
+
+  .nav {
+    position: fixed;
+    left: 50%;
+    bottom: 18px;
+    transform: translateX(-50%);
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: rgba(255,255,255,0.86);
+    border: 1px solid rgba(16,58,99,0.15);
+    box-shadow: 0 10px 30px rgba(20,35,53,0.12);
+    backdrop-filter: blur(10px);
+  }
+
+  .nav button {
+    border: 1px solid var(--faint);
+    background: #fff;
+    color: var(--blue);
+    font-size: 14px;
+    font-weight: 700;
+    height: 34px;
+    padding: 0 14px;
+    cursor: pointer;
+  }
+
+  .nav .count {
+    min-width: 64px;
+    text-align: center;
+    color: var(--ink-2);
+    font-size: 14px;
+  }
+
+  .cover {
+    padding: 0;
+    display: none;
+  }
+
+  .cover.active { display: block; }
+
+  .cover-wrap {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-columns: 1.12fr 0.88fr;
+  }
+
+  .cover-left {
+    padding: 120px 96px 80px;
+    background: #fff;
+  }
+
+  .cover-mark {
+    width: 82px;
+    height: 82px;
+    display: grid;
+    place-items: center;
+    background: var(--blue);
+    color: #fff;
+    font-size: 38px;
+    font-family: "Georgia", serif;
+    margin-bottom: 56px;
+  }
+
+  .cover-title {
+    font-family: "Georgia", "Times New Roman", "Microsoft YaHei", serif;
+    font-size: 92px;
+    line-height: 1.02;
+    letter-spacing: 0;
+    color: var(--ink);
+    max-width: 980px;
+  }
+
+  .cover-sub {
+    margin-top: 32px;
+    max-width: 870px;
+    color: var(--ink-2);
+    font-size: 30px;
+    line-height: 1.45;
+  }
+
+  .cover-meta {
+    position: absolute;
+    left: 96px;
+    bottom: 78px;
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+
+  .cover-right {
+    position: relative;
+    background:
+      linear-gradient(135deg, rgba(16,58,99,0.97), rgba(30,91,143,0.92)),
+      linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px);
+    color: #fff;
+    overflow: hidden;
+  }
+
+  .cover-right::before {
+    content: "";
+    position: absolute;
+    inset: 72px;
+    border: 1px solid rgba(255,255,255,0.22);
+  }
+
+  .cover-diagram {
+    position: absolute;
+    inset: 160px 90px;
+  }
+
+  .diagram-node {
+    position: absolute;
+    width: 178px;
+    height: 86px;
+    border: 1px solid rgba(255,255,255,0.32);
+    background: rgba(255,255,255,0.08);
+    display: grid;
+    place-items: center;
+    text-align: center;
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  .d-center {
+    left: 250px;
+    top: 285px;
+    width: 220px;
+    height: 120px;
+    background: #fff;
+    color: var(--blue);
+    font-size: 26px;
+  }
+
+  .d1 { left: 250px; top: 0; }
+  .d2 { right: 0; top: 180px; }
+  .d3 { right: 80px; bottom: 0; }
+  .d4 { left: 80px; bottom: 0; }
+  .d5 { left: 0; top: 180px; }
+
+  .diagram-line {
+    position: absolute;
+    left: 339px;
+    top: 88px;
+    width: 2px;
+    height: 198px;
+    background: rgba(215,189,122,0.72);
+  }
+
+  .source {
+    position: absolute;
+    left: 94px;
+    bottom: 42px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .wide-note {
+    position: relative;
+    z-index: 1;
+    padding: 22px 28px;
+    background: var(--blue);
+    color: #fff;
+    font-size: 24px;
+    line-height: 1.45;
+    border-left: 8px solid var(--gold);
+  }
+
+  .thin-split {
+    display: grid;
+    grid-template-columns: 0.9fr 1.1fr;
+    gap: 36px;
+    align-items: start;
+  }
+
+  .big-quote {
+    color: var(--blue);
+    font-family: "Georgia", "Times New Roman", serif;
+    font-size: 44px;
+    line-height: 1.2;
+  }
+
+  .value-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+
+  @media print {
+    @page {
+      size: 16in 9in;
+      margin: 0;
+    }
+
+    html, body {
+      width: auto;
+      height: auto;
+      overflow: visible;
+      background: #fff;
+    }
+
+    body::before,
+    .nav {
+      display: none !important;
+    }
+
+    .stage {
+      position: static;
+      inset: auto;
+      overflow: visible;
+    }
+
+    .deck {
+      width: 1920px;
+      height: auto;
+      transform: none !important;
+      filter: none;
+    }
+
+    .slide,
+    .cover {
+      position: relative;
+      display: block !important;
+      width: 1920px;
+      height: 1080px;
+      break-after: page;
+      page-break-after: always;
+      animation: none !important;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+  <main class="deck" id="deck">
+    <section class="slide cover active">
+      <div class="cover-wrap">
+        <div class="cover-left">
+          <div class="cover-mark">智</div>
+          <div class="kicker">Business Solution</div>
+          <h1 class="cover-title">IntelliBanker<br />智能营销平台</h1>
+          <p class="cover-sub">面向银行客户经营全流程，构建洞察、画像、事件、拜访与报告一体化能力。</p>
+          <div class="cover-meta">
+            <span class="tagline">银行业务方汇报</span>
+            <span class="tagline">业务方案型</span>
+            <span class="tagline">客户经营闭环</span>
+          </div>
+        </div>
+        <div class="cover-right">
+          <div class="cover-diagram">
+            <div class="diagram-line"></div>
+            <div class="diagram-node d1">客户数据</div>
+            <div class="diagram-node d2">事件预警</div>
+            <div class="diagram-node d3">拜访执行</div>
+            <div class="diagram-node d4">经营沉淀</div>
+            <div class="diagram-node d5">智能报告</div>
+            <div class="diagram-node d-center">客户经营<br />智能中枢</div>
+          </div>
+        </div>
+      </div>
+      <div class="page">01 / 14</div>
+    </section>
+
+    <section class="slide">
+      <div class="topline"><span class="rule"></span><span>01 Business Pain</span></div>
+      <div class="title-row">
+        <div>
+          <div class="kicker">经营痛点</div>
+          <h2>客户经营链路亟需闭环升级</h2>
+        </div>
+        <div class="claim-note">当前问题不是没有数据，而是数据分散、判断依赖个人经验、后续动作缺少闭环追踪。</div>
+      </div>
+      <div class="grid-5">
+        <div class="panel">
+          <h3>数据散</h3>
+          <ul class="bullets">
+            <li>核心、信贷、理财、CRM、外部数据分散在多个系统。</li>
+            <li>客户经理准备拜访时需要跨系统查询、手工拼接信息。</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>画像浅</h3>
+          <ul class="bullets">
+            <li>多数画像停留在静态资料和产品余额展示。</li>
+            <li>缺少资产变化、行为偏好、生命周期、风险事件的综合判断。</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>报告慢</h3>
+          <ul class="bullets">
+            <li>客群分析和经营报告依赖人工整理。</li>
+            <li>统计口径、图表样式、解读质量难以标准化。</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>拜访重</h3>
+          <ul class="bullets">
+            <li>拜访前准备、拜访后纪要、标签更新、跟进任务依赖人工。</li>
+            <li>一线人员时间消耗在整理材料而非客户沟通。</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>动作断</h3>
+          <ul class="bullets">
+            <li>产品到期、资产流失、风险异动等事件无法稳定进入任务流。</li>
+            <li>管理者难以追踪机会处理率和客户跟进结果。</li>
+          </ul>
+        </div>
+      </div>
+      <div class="wide-note" style="margin-top:38px;">业务改造的关键，是把“发现问题”升级为“生成任务、推动拜访、沉淀结果、复盘经营”。</div>
+      <div class="page">02 / 14</div>
+    </section>
+
+    <section class="slide">
+      <div class="topline"><span class="rule"></span><span>02 Positioning</span></div>
+      <div class="title-row">
+        <div>
+          <div class="kicker">方案定位</div>
+          <h2>构建一线经营与管理决策双支撑平台</h2>
+        </div>
+        <div class="claim-note">同一套客户经营数据底座，同时服务一线执行、分支管理和营销运营。</div>
+      </div>
+      <div class="thin-split">
+        <div class="panel dark" style="min-height:620px;">
+          <h3>平台定位</h3>
+          <p style="font-size:28px; line-height:1.42;">IntelliBanker 面向银行对公与零售客户经营，以客户数据为基础，以事件和标签为驱动，将客户洞察、画像分析、拜访执行和报告生成组织成一套可运营闭环。</p>
+          <div style="height:1px;background:rgba(255,255,255,0.25);margin:34px 0;"></div>
+          <div class="metric">
+            <div class="value" style="color:#fff;">4 类角色</div>
+            <div class="label" style="color:rgba(255,255,255,0.76);">客户经理、分支行管理者、营销管理部门、科技与数据团队</div>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="panel">
+            <h3>客户经理</h3>
+            <ul class="bullets">
+              <li>快速理解客户现状、资产变化、产品持有与风险事件。</li>
+              <li>自动获得拜访建议、推荐话术和后续跟进任务。</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>分支行管理者</h3>
+            <ul class="bullets">
+              <li>掌握辖内客户结构、AUM、存贷款和重点客户清单。</li>
+              <li>追踪事件处理率、营销机会和客户经理执行情况。</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>营销管理部门</h3>
+            <ul class="bullets">
+              <li>配置标签主题，快速生成客群画像分析报告。</li>
+              <li>沉淀高净值、代发、流失预警等可复用经营策略。</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>科技与数据团队</h3>
+            <ul class="bullets">
+              <li>通过标准 API 承接行内数据和外部数据。</li>
+              <li>支撑权限、审计、脱敏、渠道推送和系统回写扩展。</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="page">03 / 14</div>
+    </section>
+
+    <section class="slide">
+      <div class="topline"><span class="rule"></span><span>03 Business Loop</span></div>
+      <div class="title-row">
+        <div>
+          <div class="kicker">业务闭环</div>
+          <h2>打通“洞察—触达—沉淀”客户经营闭环</h2>
+        </div>
+        <div class="claim-note">平台价值不止在“看报表”，而在让每个机会进入业务流程。</div>
+      </div>
+      <div class="flow">
+        <div class="flow-step">
+          <div class="flow-dot">1</div>
+          <h3>客户数据汇聚</h3>
+          <p>整合客户基础、账户资产、产品持有、交易行为、触达历史、风险与外部数据。</p>
+        </div>
+        <div class="flow-step">
+          <div class="flow-dot">2</div>
+          <h3>标签画像生成</h3>
+          <p>形成个人画像、企业画像、资产分层、生命周期、风险偏好和客群主题。</p>
+        </div>
+        <div class="flow-step">
+          <div class="flow-dot">3</div>
+          <h3>智能分析解读</h3>
+          <p>输出客群结构、业务指标、显著特征、相关性洞察和管理层摘要。</p>
+        </div>
+        <div class="flow-step">
+          <div class="flow-dot">4</div>
+          <h3>事件触发任务</h3>
+          <p>产品到期、资产流出、生命周期变化、舆情变化等自动触发经营动作。</p>
+        </div>
+        <div class="flow-step">
+          <div class="flow-dot">5</div>
+          <h3>拜访执行跟进</h3>
+          <p>生成拜访建议、现场记录、AI 纪要、标签更新和后续待办。</p>
+        </div>
+        <div class="flow-step">
+          <div class="flow-dot">6</div>
+          <h3>经营沉淀复盘</h3>
+          <p>沉淀触达历史、报告归档、审计日志和营销策略模板，支持持续优化。</p>
+        </div>
+      </div>
+      <div class="grid-3" style="margin-top:44px;">
+        <div class="panel compact"><div class="metric"><div class="value">画像</div><div class="label">解决“客户是谁、有什么变化、当前应关注什么”</div></div></div>
+        <div class="panel compact"><div class="metric"><div class="value">事件</div><div class="label">解决“什么时候该联系、为什么联系、优先级如何”</div></div></div>
+        <div class="panel compact"><div class="metric"><div class="value">任务</div><div class="label">解决“谁来跟进、如何跟进、结果是否回写”</div></div></div>
+      </div>
+      <div class="page">04 / 14</div>
+    </section>
+
+    <section class="slide">
+      <div class="topline"><span class="rule"></span><span>04 Insight Report</span></div>
+      <div class="title-row">
+        <div>
+          <div class="kicker">核心能力一</div>
+          <h2>客户洞察报告：看清盘面，定位重点</h2>
+        </div>
+        <div class="claim-note">从“总量指标”下钻到“客户名单”，让管理视图天然连接一线动作。</div>
+      </div>
+      <div class="grid-2" style="grid-template-columns:1.18fr 0.82fr;">
+        <div class="panel">
+          <div class="grid-4" style="margin-bottom:28px;">
+            <div class="metric"><div class="value">客户</div><div class="label">个人与企业客户总量、机构分布、客户经理归属</div></div>
+            <div class="metric"><div class="value">AUM</div><div class="label">总资产、资产分层、近 6 月趋势变化</div></div>
+            <div class="metric"><div class="value">存贷</div><div class="label">存款余额、贷款余额、增长与流失指标</div></div>
+            <div class="metric"><div class="value">机会</div><div class="label">到期、流失、高价值、交叉销售清单</div></div>
+          </div>
+          <div class="chart-bars">
+            <div class="bar" style="height:72%;"><span>大众</span></div>
+            <div class="bar gold" style="height:50%;"><span>成长</span></div>
+            <div class="bar" style="height:39%;"><span>中端</span></div>
+            <div class="bar gold" style="height:26%;"><span>高净值</span></div>
+            <div class="bar" style="height:18%;"><span>流失预警</span></div>
+          </div>
+          <p class="body" style="margin-top:52px;">支持全行、分支行、客户经理三个视角切换。管理者既能看整体结构，也能进入流失预警、产品到期、高价值目标等客户清单。</p>
+        </div>
+        <div class="numbered">
+          <div class="num-item">
+            <div class="num">01</div>
+            <div><div class="num-title">指标盘面</div><div class="num-copy">客户数、AUM、存款、贷款、贷款转化、交叉持有、中间业务收入。</div></div>
+          </div>
+          <div class="num-item">
+            <div class="num">02</div>
+            <div><div class="num-title">结构分析</div><div class="num-copy">资产层级、生命周期阶段、机构分布、经理维度贡献。</div></div>
+          </div>
+          <div class="num-item">
+            <div class="num">03</div>
+            <div><div class="num-title">重点名单</div><div class="num-copy">流失预警、产品即将到期、高价值目标和低覆盖客户。</div></div>
+          </div>
+          <div class="num-item">
+            <div class="num">04</div>
+            <div><div class="num-title">管理动作</div><div class="num-copy">推送报告、导出材料、跳转画像、分配后续营销任务。</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="page">05 / 14</div>
+    </section>
+
+    <section class="slide">
+      <div class="topline"><span class="rule"></span><span>05 Personal Profile</span></div>
+      <div class="title-row">
+        <div>
+          <div class="kicker">核心能力二</div>
+          <h2>个人客户画像：支撑拜访前经营判断</h2>
+        </div>
+        <div class="claim-note">把基础资料、产品、行为、标签、风险和触达历史压缩成可行动判断。</div>
+      </div>
+      <div class="grid-2" style="grid-template-columns:430px 1fr; align-items:start;">
+        <div class="phone">
+          <div class="phone-bar"></div>
+          <div class="profile-head">
+            <div class="avatar">张</div>
+            <div>
+              <div style="font-size:27px;font-weight:900;color:var(--ink);">张伟</div>
+              <div style="font-size:16px;color:var(--muted);margin-top:4px;">中端客户 · 成熟期 · 稳健型</div>
+            </div>
+          </div>
+          <div class="mini-row"><span>AUM 总值</span><strong>1,550,000</strong></div>
+          <div class="mini-row"><span>存款结构</span><strong>定期为主</strong></div>
+          <div class="mini-row"><span>持有产品</span><strong>4 类</strong></div>
+          <div class="mini-row"><span>渠道偏好</span><strong>手机银行</strong></div>
+          <div class="mini-row"><span>流失概率</span><strong style="color:var(--red);">42%</strong></div>
+          <div class="mini-row"><span>最近触达</span><strong>企微推荐</strong></div>
+          <div style="margin-top:26px;padding:18px;background:#f7f4ed;border-left:4px solid var(--gold);font-size:17px;line-height:1.45;color:var(--ink-2);">建议关注 30 日内产品到期和资产下降信号，拜访中优先沟通稳健型存款替代方案。</div>
+        </div>
+        <div class="grid-3">
+          <div class="panel"><h3>基本信息</h3><ul class="bullets"><li>姓名、手机号脱敏、职业、开户时间、归属机构和客户经理。</li><li>按角色权限展示客户范围，避免跨机构误看。</li></ul></div>
+          <div class="panel"><h3>产品持有</h3><ul class="bullets"><li>活期、定期、大额存单、贷款、理财、基金、保险。</li><li>展示 30 日内到期产品和余额规模。</li></ul></div>
+          <div class="panel"><h3>金融行为</h3><ul class="bullets"><li>近 6 月收支趋势、转账频率、线上线下渠道偏好。</li><li>手机银行活跃度辅助判断数字化触达方式。</li></ul></div>
+          <div class="panel"><h3>标签体系</h3><ul class="bullets"><li>资产等级、生命周期、风险偏好、营销响应倾向。</li><li>流失概率和触发事件进入拜访优先级判断。</li></ul></div>
+          <div class="panel"><h3>风险信息</h3><ul class="bullets"><li>信用评级、逾期记录摘要和风险提示。</li><li>高风险动作保留人工确认边界。</li></ul></div>
+          <div class="panel"><h3>触达历史</h3><ul class="bullets"><li>最近营销触达时间、渠道、内容和客户响应。</li><li>避免重复打扰，提升服务连续性。</li></ul></div>
+        </div>
+      </div>
+      <div class="page">06 / 14</div>
+    </section>
+
+    <section class="slide">
+      <div class="topline"><span class="rule"></span><span>06 Enterprise Profile</span></div>
+      <div class="title-row">
+        <div>
+          <div class="kicker">核心能力三</div>
+          <h2>企业客户画像：统筹风险、关系与机会</h2>
+        </div>
+        <div class="claim-note">对公经营需要同时看企业本体、关键人、授信风险和产品覆盖缺口。</div>
+      </div>
+      <div class="grid-3">
+        <div class="panel dark" style="min-height:620px;">
+          <h3>风险判断</h3>
+          <ul class="bullets">
+            <li>征信摘要、司法涉诉、负面舆情、授信使用率。</li>
+            <li>识别“可拓展但需谨慎”的客户和“需优先预警”的客户。</li>
+          </ul>
+          <div style="height:230px;margin-top:34px;border:1px solid rgba(255,255,255,0.25);display:grid;place-items:center;">
+            <div style="width:210px;height:210px;border:2px solid rgba(215,189,122,0.9);border-radius:50%;display:grid;place-items:center;text-align:center;font-size:28px;font-weight:800;">风险<br />雷达</div>
+          </div>
+        </div>
+        <div class="panel" style="min-height:620px;">
+          <h3>关系网络</h3>
+          <ul class="bullets">
+            <li>企业实际控制人、法定代表人、财务负责人、关联集团。</li>
+            <li>关键人可关联到个人客户画像，支撑公私联动经营。</li>
+          </ul>
+          <div style="margin-top:34px;position:relative;height:250px;">
+            <div class="avatar" style="position:absolute;left:150px;top:80px;border-radius:0;">企</div>
+            <div class="tagline" style="position:absolute;left:0;top:0;">实际控制人</div>
+            <div class="tagline" style="position:absolute;right:0;top:30px;">财务负责人</div>
+            <div class="tagline" style="position:absolute;left:20px;bottom:10px;">关联集团</div>
+            <div class="tagline" style="position:absolute;right:30px;bottom:0;">关键个人</div>
+          </div>
+        </div>
+        <div class="panel" style="min-height:620px;">
+          <h3>机会识别</h3>
+          <ul class="bullets">
+            <li>授信使用、存款沉淀、他行贷款、结算活跃、代发工资。</li>
+            <li>识别供应链金融、现金管理、票据保函、工资代发机会。</li>
+          </ul>
+          <div class="numbered" style="margin-top:30px;">
+            <div class="num-item"><div class="num">A</div><div><div class="num-title">已覆盖产品</div><div class="num-copy">流动资金贷款、票据、结算账户。</div></div></div>
+            <div class="num-item"><div class="num">B</div><div><div class="num-title">可拓展产品</div><div class="num-copy">现金管理、供应链金融、代发工资。</div></div></div>
+            <div class="num-item"><div class="num">C</div><div><div class="num-title">下一步动作</div><div class="num-copy">触发拜访任务，推送企业画像和产品建议。</div></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="page">07 / 14</div>
+    </section>
+
+    <section class="slide">
+      <div class="topline"><span class="rule"></span><span>07 Event Engine</span></div>
+      <div class="title-row">
+        <div>
+          <div class="kicker">核心能力四</div>
+          <h2>事件驱动营销：让机会主动进入流程</h2>
+        </div>
+        <div class="claim-note">事件不是提醒消息，事件必须进入任务、拜访和跟进状态管理。</div>
+      </div>
+      <div class="matrix five">
+        <div class="cell head">事件类型</div>
+        <div class="cell head">触发条件</div>
+        <div class="cell head">系统动作</div>
+        <div class="cell head">一线动作</div>
+        <div class="cell head">管理视角</div>
+        <div class="cell rowhead">产品到期</div>
+        <div class="cell">理财、定存或大额存单 7 日内到期。</div>
+        <div class="cell">生成续存营销任务，推送画像摘要和替代产品。</div>
+        <div class="cell">联系客户确认资金安排，推荐稳健配置。</div>
+        <div class="cell">查看到期规模、处理率和续存转化。</div>
+        <div class="cell rowhead">资产流出</div>
+        <div class="cell">AUM 环比下降或大额资金转出。</div>
+        <div class="cell">生成流失预警，标记高优先级。</div>
+        <div class="cell">了解资金用途，制定挽留或替代方案。</div>
+        <div class="cell">跟踪高价值客户资产变化。</div>
+        <div class="cell rowhead">生命周期变化</div>
+        <div class="cell">客户进入衰退期或流失预警阶段。</div>
+        <div class="cell">自动更新标签，触发对应营销旅程。</div>
+        <div class="cell">执行唤醒、维护或升级经营动作。</div>
+        <div class="cell">查看分层迁移和客户健康度。</div>
+        <div class="cell rowhead">企业舆情</div>
+        <div class="cell">外部舆情、司法或工商信息变化。</div>
+        <div class="cell">推送风险提示或机会提示给主办客户经理。</div>
+        <div class="cell">调整授信沟通、关系维护和产品策略。</div>
+        <div class="cell">关注辖内企业风险暴露。</div>
+      </div>
+      <div class="wide-note" style="margin-top:30px;">事件引擎的业务价值在于优先级排序和状态追踪：今日触发、待处理、已完成、高优先级、逾期未处理，都应进入管理视图。</div>
+      <div class="page">08 / 14</div>
+    </section>
+
+    <section class="slide">
+      <div class="topline"><span class="rule"></span><span>08 Visit Workflow</span></div>
+      <div class="title-row">
+        <div>
+          <div class="kicker">核心能力五</div>
+          <h2>拜访流程自动化：推动客户接触可沉淀</h2>
+        </div>
+        <div class="claim-note">客户经理最高频的业务场景，需要从准备材料升级为完整执行流程。</div>
+      </div>
+      <div class="grid-3">
+        <div class="panel" style="min-height:610px;">
+          <div class="tagline">拜访前</div>
+          <h3 style="margin-top:22px;">自动准备，明确沟通重点</h3>
+          <ul class="bullets">
+            <li>客户经理选择拜访客户后，系统自动拉取画像摘要。</li>
+            <li>识别当前事件：产品到期、资产异动、流失预警、生命周期变化。</li>
+            <li>生成拜访建议、推荐话术、重点产品方向和注意事项。</li>
+            <li>自动创建拜访任务，进入待办或 CRM 流程。</li>
+          </ul>
+          <div class="wide-note" style="font-size:20px;margin-top:34px;">输出：画像摘要、触发事件、拜访建议、推荐产品、任务 ID。</div>
+        </div>
+        <div class="panel" style="min-height:610px;">
+          <div class="tagline">拜访中</div>
+          <h3 style="margin-top:22px;">现场记录，减少事后补录</h3>
+          <ul class="bullets">
+            <li>记录拜访开始时间、地点，并与客户地址做校验准备。</li>
+            <li>移动端实时查看完整画像和近期触达历史。</li>
+            <li>记录沟通要点：需求、承诺、异议、跟进事项。</li>
+            <li>为后续 AI 纪要和标签更新提供结构化输入。</li>
+          </ul>
+          <div class="wide-note" style="font-size:20px;margin-top:34px;">输出：拜访地点、沟通内容、客户需求、异议和承诺。</div>
+        </div>
+        <div class="panel" style="min-height:610px;">
+          <div class="tagline">拜访后</div>
+          <h3 style="margin-top:22px;">自动纪要，形成跟进闭环</h3>
+          <ul class="bullets">
+            <li>基于沟通要点自动生成结构化拜访纪要。</li>
+            <li>根据内容更新客户标签，如已面访、存款意向、贷款意向。</li>
+            <li>创建 3 日发送方案、7 日电话跟进、30 日再次拜访等任务。</li>
+            <li>回写营销历史，便于后续复盘和客户连续服务。</li>
+          </ul>
+          <div class="wide-note" style="font-size:20px;margin-top:34px;">输出：AI 纪要、标签变化、后续任务、下一触发节点。</div>
+        </div>
+      </div>
+      <div class="page">09 / 14</div>
+    </section>
+
+    <section class="slide">
+      <div class="topline"><span class="rule"></span><span>09 Segment Report</span></div>
+      <div class="title-row">
+        <div>
+          <div class="kicker">核心能力六</div>
+          <h2>客群画像报告：沉淀可复用经营策略</h2>
+        </div>
+        <div class="claim-note">面向营销管理人员，减少人工报告制作时间，稳定输出经营建议。</div>
+      </div>
+      <div class="grid-2" style="grid-template-columns:0.92fr 1.08fr;">
+        <div class="panel">
+          <h3>报告生成流水线</h3>
+          <div class="numbered" style="margin-top:24px;">
+            <div class="num-item"><div class="num">1</div><div><div class="num-title">选择标签主题</div><div class="num-copy">高净值、代发工资、流失预警、年轻客群、企业客群等。</div></div></div>
+            <div class="num-item"><div class="num">2</div><div><div class="num-title">自动筛选客群</div><div class="num-copy">支持 AND/OR 嵌套规则，按客户属性和行为自动匹配。</div></div></div>
+            <div class="num-item"><div class="num">3</div><div><div class="num-title">特征与相关性分析</div><div class="num-copy">统计聚合、显著性评分、Top5 特征、Lift 关联规则。</div></div></div>
+            <div class="num-item"><div class="num">4</div><div><div class="num-title">AI 生成报告</div><div class="num-copy">执行摘要、维度解读、营销方向、重点客户和话术建议。</div></div></div>
+            <div class="num-item"><div class="num">5</div><div><div class="num-title">导出与归档</div><div class="num-copy">在线预览，导出 Word/PDF，历史报告入库留痕。</div></div></div>
+          </div>
+        </div>
+        <div class="panel tint">
+          <h3>报告目录结构</h3>
+          <div class="matrix four" style="margin-top:18px;">
+            <div class="cell head">章节</div>
+            <div class="cell head">核心内容</div>
+            <div class="cell head">业务问题</div>
+            <div class="cell head">输出产物</div>
+            <div class="cell rowhead">客群概览</div>
+            <div class="cell">人数、年龄、地域、职业、资产等级。</div>
+            <div class="cell">这类客户是谁。</div>
+            <div class="cell">基础画像和核心客群定义。</div>
+            <div class="cell rowhead">特征分析</div>
+            <div class="cell">资产、产品、行为、社区、风险等维度。</div>
+            <div class="cell">这类客户有什么显著特征。</div>
+            <div class="cell">图表、Top5 特征和 AI 解读。</div>
+            <div class="cell rowhead">相关性洞察</div>
+            <div class="cell">枚举与枚举、枚举与数值的关联规则。</div>
+            <div class="cell">哪些组合特征值得重点经营。</div>
+            <div class="cell">Lift、支持度、置信度和建议。</div>
+            <div class="cell rowhead">营销建议</div>
+            <div class="cell">方向、重点客户、交叉销售、话术。</div>
+            <div class="cell">下一步怎么做。</div>
+            <div class="cell">可执行经营策略。</div>
+          </div>
+        </div>
+      </div>
+      <div class="page">10 / 14</div>
+    </section>
+
+    <section class="slide">
+      <div class="topline"><span class="rule"></span><span>10 AI Capability</span></div>
+      <div class="title-row">
+        <div>
+          <div class="kicker">AI 嵌入</div>
+          <h2>AI 能力嵌入：提升分析与执行效率</h2>
+        </div>
+        <div class="claim-note">把 AI 放在高频、低风险、可复核的经营辅助环节，保留人工确认边界。</div>
+      </div>
+      <div class="grid-2" style="grid-template-columns:0.9fr 1.1fr;">
+        <div class="loop">
+          <div class="circle-line"></div>
+          <div class="loop-center">AI 能力层<br />DeepSeek</div>
+          <div class="loop-node n1"><b>洞察摘要</b><span>经营指标生成管理层可读摘要。</span></div>
+          <div class="loop-node n2"><b>画像解读</b><span>解释资产、行为、标签和风险含义。</span></div>
+          <div class="loop-node n3"><b>拜访建议</b><span>生成话术、产品方向和注意事项。</span></div>
+          <div class="loop-node n4"><b>拜访纪要</b><span>生成结构化纪要和后续任务。</span></div>
+          <div class="loop-node n5"><b>客群报告</b><span>生成摘要、洞察和营销建议。</span></div>
+        </div>
+        <div>
+          <div class="grid-2">
+            <div class="panel"><h3>可解释</h3><p>AI 输出需对应客户数据、标签规则或知识库内容，避免无来源的判断。</p></div>
+            <div class="panel"><h3>可复核</h3><p>摘要、建议、纪要作为辅助结果，由客户经理或管理人员确认后进入业务流程。</p></div>
+            <div class="panel"><h3>可降级</h3><p>模型不可用时，核心流程仍能使用模板文案、预设规则和统计结果继续运行。</p></div>
+            <div class="panel"><h3>可审计</h3><p>报告生成、任务创建、导出和关键操作进入日志，支撑后续追溯。</p></div>
+          </div>
+          <div class="wide-note" style="margin-top:26px;">业务边界：涉及资金、合同、客户信息变更等高风险动作，必须保留人工确认，不由 AI 自动执行。</div>
+        </div>
+      </div>
+      <div class="page">11 / 14</div>
+    </section>
+
+    <section class="slide">
+      <div class="topline"><span class="rule"></span><span>11 Business Value</span></div>
+      <div class="title-row">
+        <div>
+          <div class="kicker">业务价值</div>
+          <h2>业务价值：提效率、促转化、强管理、优体验</h2>
+        </div>
+        <div class="claim-note">对业务方而言，价值应能被岗位动作和经营指标感知，而不是只停留在功能清单。</div>
+      </div>
+      <div class="value-grid">
+        <div class="panel">
+          <h3>客户经理效率</h3>
+          <ul class="bullets">
+            <li>减少跨系统查询和手工整理时间。</li>
+            <li>提升拜访准备质量和沟通针对性。</li>
+            <li>拜访后自动纪要和跟进任务降低遗漏。</li>
+          </ul>
+          <div class="tagline" style="margin-top:20px;">可衡量：准备时长、纪要生成率、任务完成率</div>
+        </div>
+        <div class="panel">
+          <h3>营销机会转化</h3>
+          <ul class="bullets">
+            <li>产品到期、资产流出、流失预警及时转为任务。</li>
+            <li>按客群标签匹配产品和话术，提高触达相关性。</li>
+            <li>低产品覆盖客户可被持续识别和经营。</li>
+          </ul>
+          <div class="tagline" style="margin-top:20px;">可衡量：续存率、转化率、产品覆盖度</div>
+        </div>
+        <div class="panel">
+          <h3>管理穿透力</h3>
+          <ul class="bullets">
+            <li>管理者可按全行、分支、经理查看经营盘面。</li>
+            <li>重点客户清单和事件处理状态可追踪。</li>
+            <li>营销报告和操作日志形成管理抓手。</li>
+          </ul>
+          <div class="tagline" style="margin-top:20px;">可衡量：事件处理率、逾期任务、报告周期</div>
+        </div>
+        <div class="panel">
+          <h3>客户体验</h3>
+          <ul class="bullets">
+            <li>客户触达更及时，减少错过到期和风险窗口。</li>
+            <li>推荐内容更符合客户资产、行为和偏好。</li>
+            <li>触达历史沉淀后，服务连续性更好。</li>
+          </ul>
+          <div class="tagline" style="margin-top:20px;">可衡量：响应率、满意度、重复打扰下降</div>
+        </div>
+      </div>
+      <div class="page">12 / 14</div>
+    </section>
+
+    <section class="slide">
+      <div class="topline"><span class="rule"></span><span>12 Implementation Roadmap</span></div>
+      <div class="title-row">
+        <div>
+          <div class="kicker">落地路径</div>
+          <h2>分阶段推进：先试点验证，后生产扩展</h2>
+        </div>
+        <div class="claim-note">银行场景不宜一步到位，分阶段交付更利于口径确认和风险控制。</div>
+      </div>
+      <div class="roadmap">
+        <div class="phase">
+          <div class="phase-num">01</div>
+          <h3>场景验证阶段</h3>
+          <ul class="bullets">
+            <li>验证客户洞察、画像、事件、拜访、报告生成主流程。</li>
+            <li>明确业务口径、页面交互、角色视角和汇报材料样式。</li>
+            <li>交付可演示系统和业务方案样稿。</li>
+          </ul>
+        </div>
+        <div class="phase">
+          <div class="phase-num">02</div>
+          <h3>试点数据接入</h3>
+          <ul class="bullets">
+            <li>接入核心、信贷、理财、CRM 的必要字段。</li>
+            <li>对齐客户分层、生命周期、产品分类和事件规则。</li>
+            <li>建立数据脱敏、权限隔离和审计规范。</li>
+          </ul>
+        </div>
+        <div class="phase">
+          <div class="phase-num">03</div>
+          <h3>试点机构运行</h3>
+          <ul class="bullets">
+            <li>选择一个分支行或客户经理团队先行试点。</li>
+            <li>重点运行产品到期、流失预警、拜访闭环场景。</li>
+            <li>跟踪事件处理率、拜访完成率和客户响应。</li>
+          </ul>
+        </div>
+        <div class="phase">
+          <div class="phase-num">04</div>
+          <h3>生产化扩展</h3>
+          <ul class="bullets">
+            <li>对接统一身份、CRM 工单、企微/短信/外呼等渠道。</li>
+            <li>扩展更多标签主题、营销活动模板和报告模板。</li>
+            <li>形成持续运营机制和指标看板。</li>
+          </ul>
+        </div>
+      </div>
+      <div class="page">13 / 14</div>
+    </section>
+
+    <section class="slide">
+      <div class="topline"><span class="rule"></span><span>13 Closing Thesis</span></div>
+      <div class="title-row">
+        <div>
+          <div class="kicker">总结</div>
+          <h2>由客户画像系统升级为客户经营智能中枢</h2>
+        </div>
+        <div class="claim-note">让每一次数据变化，都能转化为一次可执行、可追踪的客户经营动作。</div>
+      </div>
+      <div class="grid-2" style="grid-template-columns:0.92fr 1.08fr;">
+        <div class="panel dark" style="min-height:590px;">
+          <h3>不是单点功能</h3>
+          <ul class="bullets" style="gap:18px;">
+            <li>不是只做报表：报表必须连接客户清单和后续任务。</li>
+            <li>不是只做资料：画像必须表达客户变化、风险和机会。</li>
+            <li>不是只做 AI 问答：AI 必须嵌入经营流程并可复核。</li>
+            <li>不是只做拜访记录：拜访必须沉淀标签、触达历史和跟进动作。</li>
+          </ul>
+        </div>
+        <div>
+          <div class="big-quote">看清客群，识别机会，推动拜访，沉淀触达，持续优化。</div>
+          <div class="grid-2" style="margin-top:42px;">
+            <div class="panel"><h3>客户经理更高效</h3><p>客户理解、拜访准备、纪要生成和跟进任务统一在一条工作线上。</p></div>
+            <div class="panel"><h3>管理者更透明</h3><p>辖内经营盘面、重点客户、事件处理和营销结果形成可视化抓手。</p></div>
+            <div class="panel"><h3>营销更精准</h3><p>标签主题、客群报告、相关性洞察和话术建议支撑精准运营。</p></div>
+            <div class="panel"><h3>经营更持续</h3><p>触达历史、标签变化、报告归档和审计日志形成长期资产。</p></div>
+          </div>
+        </div>
+      </div>
+      <div class="page">14 / 14</div>
+    </section>
+  </main>
+</div>
+
+<div class="nav">
+  <button id="prevBtn">上一页</button>
+  <div class="count" id="count">1 / 14</div>
+  <button id="nextBtn">下一页</button>
+</div>
+
+<script>
+  const deck = document.getElementById("deck");
+  const slides = Array.from(document.querySelectorAll(".slide"));
+  const count = document.getElementById("count");
+  let current = 0;
+
+  function fitDeck() {
+    const scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+    const x = (window.innerWidth - 1920 * scale) / 2;
+    const y = (window.innerHeight - 1080 * scale) / 2;
+    deck.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+  }
+
+  function showSlide(index) {
+    current = Math.max(0, Math.min(slides.length - 1, index));
+    slides.forEach((slide, i) => slide.classList.toggle("active", i === current));
+    count.textContent = `${current + 1} / ${slides.length}`;
+    window.location.hash = `slide-${current + 1}`;
+  }
+
+  document.getElementById("prevBtn").addEventListener("click", () => showSlide(current - 1));
+  document.getElementById("nextBtn").addEventListener("click", () => showSlide(current + 1));
+  window.addEventListener("resize", fitDeck);
+  window.addEventListener("keydown", (event) => {
+    if (["ArrowRight", "PageDown", " "].includes(event.key)) showSlide(current + 1);
+    if (["ArrowLeft", "PageUp"].includes(event.key)) showSlide(current - 1);
+    if (event.key === "Home") showSlide(0);
+    if (event.key === "End") showSlide(slides.length - 1);
+  });
+
+  const match = window.location.hash.match(/slide-(\d+)/);
+  fitDeck();
+  showSlide(match ? Number(match[1]) - 1 : 0);
+</script>
+</body>
+</html>
